@@ -2,8 +2,8 @@
   const F=G.flick,colors={金:'#e3d1a0',木:'#b5d0b2',水:'#b8d8e8',火:'#e7b5a7',土:'#cdb799'};
   let m=null,root=null,data=null,selected=null,opening=null,drag=null,raf=0,timer=0,observer=null,tossUntil=0;
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const disc=(c,side=c.side)=>{const f=G.face(c.coin,side);return `<div class="coin ${side} core-${f.element}"><strong>${side===c.side?c.hp:f.damage}</strong></div>`;};
-  const UI=G.flickUI={mount(el,d){root=el;data=d;render();},unmount(){cancelAnimationFrame(raf);clearTimeout(timer);observer?.disconnect();root=null;drag=null;},reset(){UI.unmount();m=null;selected=null;opening=null;},getMatch:()=>m};
+  const disc=(c,side=c.side)=>{const f=G.face(c.coin,side);return G.presentation.coin(side===c.side?c.hp:f.damage,side,f.element);};
+  const UI=G.flickUI={mount(el,d){root=el;data=d;render();G.presentation.loadCoins().then(()=>draw());},unmount(){cancelAnimationFrame(raf);clearTimeout(timer);observer?.disconnect();root=null;drag=null;},reset(){UI.unmount();m=null;selected=null;opening=null;},getMatch:()=>m};
   function render(){
     if(!root)return;cancelAnimationFrame(raf);clearTimeout(timer);observer?.disconnect();
     let body='';
@@ -35,7 +35,7 @@
     }
   }
   function showRules(){
-    const dialog=document.createElement('dialog');dialog.className='flick-rules';dialog.innerHTML=`<h2>彈射對戰規則</h2><p>每回合雙方各行動一次，不重擲。總血量小者先攻；相同則依序比較硬幣較少、血量差距較小，完全相同隨機。</p><p>往後拖曳己方硬幣，放開向反方向彈射。牆壁會反彈，友軍碰撞不扣血。只有射出的硬幣能造成傷害，每次彈射對同一敵幣最多傷害一次。</p><p>一般命中 −1；打向生出自己的屬性 −2；剋制對手 −3。例：水打金 −2、水打火 −3。</p><p>開場秘密翻面一次；正式對戰再翻面一次，取代該次彈射。翻面血量直接改成另一面完整數字（含鍍膜攻擊），不保留傷勢。血量歸零退場。</p><p>藍點是我方，紅點是對手；金圈正面、紫圈反面。內色：金黃、木綠、水藍、火紅、土棕。</p><button>知道了</button>`;document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();dialog.onclose=()=>dialog.remove();dialog.showModal();
+    const dialog=document.createElement('dialog');dialog.className='flick-rules';dialog.innerHTML=`<h2>彈射對戰規則</h2><p>每回合雙方各行動一次，不重擲。總血量小者先攻；相同則依序比較硬幣較少、血量差距較小，完全相同隨機。</p><p>往後拖曳己方硬幣，放開向反方向彈射。牆壁會反彈，友軍碰撞不扣血。只有射出的硬幣能造成傷害，每次彈射對同一敵幣最多傷害一次。</p><p>一般命中 −1；打向生出自己的屬性 −2；剋制對手 −3。例：水打金 −2、水打火 −3。</p><p>開場秘密翻面一次；正式對戰再翻面一次，取代該次彈射。翻面血量直接改成另一面完整數字（含鍍膜攻擊），不保留傷勢。血量歸零退場。</p><p>藍點是我方，紅點是對手；金圈正面、銀圈反面。內色：金黃、木綠、水藍、火紅、土棕。</p><button>知道了</button>`;document.body.append(dialog);dialog.querySelector('button').onclick=()=>dialog.close();dialog.onclose=()=>dialog.remove();dialog.showModal();
   }
   function bind(canvas){
     const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*360/r.width,y:(e.clientY-r.top)*520/r.height};};
@@ -49,9 +49,9 @@
     const canvas=root?.querySelector('canvas');if(!canvas)return;const ctx=canvas.getContext('2d');ctx.setTransform(2,0,0,2,0,0);ctx.clearRect(0,0,360,520);ctx.fillStyle='#f9f7f1';ctx.fillRect(0,0,360,520);ctx.strokeStyle='#bdc6c6';ctx.lineWidth=2;ctx.strokeRect(2,2,356,516);ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(0,260);ctx.lineTo(360,260);ctx.stroke();ctx.setLineDash([]);
     ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillStyle='#9e7474';ctx.fillText('對手',180,22);ctx.fillStyle='#607c91';ctx.fillText('我方',180,508);
     for(const c of m.coins.filter(c=>c.hp>0)){
-      const rim=c.side==='front'?'#98702f':'#675180';ctx.beginPath();ctx.arc(c.x,c.y,F.radius,0,Math.PI*2);ctx.fillStyle=colors[G.face(c.coin,c.side).element]||'#ddd';ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=rim;ctx.stroke();
+      const rim=c.side==='front'?'#ffe3a3':'#e0e6f4';G.presentation.paintCoin(ctx,c.x,c.y,F.radius,c.side,G.face(c.coin,c.side).element);
       if(c.id===selected){ctx.beginPath();ctx.arc(c.x,c.y,F.radius+6,0,Math.PI*2);ctx.lineWidth=2;ctx.strokeStyle='#526f83';ctx.stroke();}
-      ctx.fillStyle=rim;ctx.font='bold 19px system-ui';ctx.textBaseline='middle';ctx.fillText(c.hp,c.x,c.y+1);ctx.textBaseline='alphabetic';ctx.beginPath();ctx.arc(c.x,c.y+F.radius+7,3,0,Math.PI*2);ctx.fillStyle=c.owner==='player'?'#477eab':'#b34f58';ctx.fill();
+      ctx.fillStyle=rim;ctx.strokeStyle='#30281f';ctx.lineWidth=2;ctx.font='bold 18px system-ui';ctx.textBaseline='middle';ctx.strokeText(c.hp,c.x,c.y+1);ctx.fillText(c.hp,c.x,c.y+1);ctx.textBaseline='alphabetic';ctx.beginPath();ctx.arc(c.x,c.y+F.radius+7,3,0,Math.PI*2);ctx.fillStyle=c.owner==='player'?'#477eab':'#b34f58';ctx.fill();
     }
     if(drag){const a=drag.start,dx=a.x-drag.end.x,dy=a.y-drag.end.y,len=Math.hypot(dx,dy),k=Math.min(1,140/Math.max(len,1)),x=a.x+dx*k,y=a.y+dy*k,angle=Math.atan2(dy,dx);ctx.strokeStyle='#35596e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(x,y);ctx.lineTo(x-10*Math.cos(angle-.5),y-10*Math.sin(angle-.5));ctx.moveTo(x,y);ctx.lineTo(x-10*Math.cos(angle+.5),y-10*Math.sin(angle+.5));ctx.stroke();}
   }

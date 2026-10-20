@@ -97,7 +97,7 @@ test('lineup editor swaps coins, equips one face, reports missing films and pers
   ctx.location.hash='#team';events.hashchange();
   let d=G.load(),a=d.team[0],b=d.team[1];
   assert.equal((app.innerHTML.match(/data-slot=/g)||[]).length,3);
-  assert.match(app.innerHTML,/金圈＝正面/);assert.match(app.innerHTML,/紫圈＝反面/);
+  assert.match(app.innerHTML,/金圈＝正面/);assert.match(app.innerHTML,/銀圈＝反面/);
   click({slot:'1'});click({action:'chooseCoin'});click({assign:a});
   d=G.load();assert.equal(d.team[0],b);assert.equal(d.team[1],a);assert.equal(new Set(d.team).size,3);
   const oldBack=d.coins.find(c=>c.id===a).backCoatingId;

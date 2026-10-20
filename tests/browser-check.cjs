@@ -45,6 +45,9 @@ async function main(){
     await checkWidth(label);
   };
   const checkSizes=async label=>{for(const [w,h] of sizes){await viewport(w,h);await checkScreen(label+' '+w+'x'+h);}await viewport(390,700);};
+  await evaluate("CoinGame.presentation.loadCoins()");
+  await evaluate("(()=>{const e=document.createElement('div');e.id='asset-preview';e.style='position:fixed;inset:0;background:#eeece6;z-index:100;padding:24px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:center';e.innerHTML=['金','木','水','火','土'].flatMap(el=>['front','back'].map(side=>CoinGame.presentation.coin(12,side,el))).join('');document.body.append(e);e.querySelectorAll('.coin').forEach(c=>{c.style.width='140px';c.style.height='140px';c.querySelector('strong').style.fontSize='40px'})})()");
+  await screenshot('coin-materials');await evaluate("document.querySelector('#asset-preview').remove()");
   await checkSizes('Home');await screenshot('home');
   await navigate('#battle');await checkSizes('Battle ready');await click('[data-action="start"]');
   assert.ok(await evaluate("!!document.querySelector('.hidden-fighter')"));
@@ -67,7 +70,7 @@ async function main(){
     })()`),'Toss must render both faces and conceal power until landing');
     await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
     assert.equal(await evaluate("document.querySelectorAll('.hidden-fighter').length"),0);
-    assert.ok(await evaluate("[...document.querySelectorAll('.duel-fighter .coin')].every(c=>c.children.length===1&&c.firstElementChild.tagName==='STRONG')"));
+    assert.ok(await evaluate("[...document.querySelectorAll('.duel-fighter .coin')].every(c=>c.querySelectorAll('strong').length===1&&c.querySelectorAll('i[aria-hidden=true]').length===3)"));
     if(round===0){
       await checkSizes('Interference');
       assert.ok(await evaluate("(()=>{const r=document.querySelector('[data-action=keep]').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;})()"),'Battle action must stay on screen');

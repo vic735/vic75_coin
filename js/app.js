@@ -9,7 +9,7 @@
   const toast=message=>{const el=document.querySelector('#toast');el.textContent=message;el.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>el.classList.remove('show'),3500);};
   const save=()=>{const ok=G.save(data);saveStatus=ok?'已自動儲存於此瀏覽器':'本機儲存失敗，請匯出備份';if(!ok)toast(G.storageWarning||saveStatus);return ok;};
   const heading=(eyebrow,title,description)=>`<div class="page-heading"><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${description}</p></div>`;
-  function disc(value,side,element,large=false){return `<div class="coin ${side} core-${element || 'none'} ${large?'large':''}"><strong>${value}</strong></div>`;}
+  const disc=G.presentation.coin;
   const coatingFor=(c,side)=>c.coatings?.[side] || data.coatings.find(m=>m.id===c[side+'CoatingId']);
   const fullyEquipped=c=>c && c.frontCoatingId && c.backCoatingId;
   const sideName=side=>side==='front'?'正面':'反面';
@@ -69,7 +69,7 @@
     const missing=data.team.reduce((n,id)=>{const c=data.coins.find(c=>c.id===id);return n+['front','back'].filter(side=>!c[side+'CoatingId']).length;},0);
     let html=heading('BUILD YOUR TEAM','我的出戰隊伍','① 點選位置　② 選擇硬幣　③ 配置兩面鍍膜');
     html+=`<div class="lineup" aria-label="選擇要編輯的隊伍位置">${[0,1,2].map(i=>{const c=data.coins.find(c=>c.id===data.team[i]);return `<button class="lineup-slot ${i===selectedSlot?'is-active':''}" data-slot="${i}" aria-pressed="${i===selectedSlot}" ${i>data.team.length?'disabled':''}><span class="slot-label">位置 ${i+1}</span>${c?`${disc(c.front,'front',coatingFor(c,'front')?.element)}<strong>${esc(c.name)}</strong><small class="${fullyEquipped(c)?'ready-state':'missing-state'}">${fullyEquipped(c)?'✓ 裝備完成':'! 需要鍍膜'}</small>`:'<span class="slot-empty">＋</span><strong>選擇硬幣</strong><small>點擊加入</small>'}</button>`;}).join('')}</div>`;
-    html+=`<div class="coin-legend"><span><i class="rim-key light-key"></i>金圈＝正面</span><span><i class="rim-key dark-key"></i>紫圈＝反面</span><span>內色＝五行鍍膜</span></div>`;
+    html+=`<div class="coin-legend"><span><i class="rim-key light-key"></i>金圈＝正面</span><span><i class="rim-key dark-key"></i>銀圈＝反面</span><span>內色＝五行鍍膜</span></div>`;
     if(coin){
       html+=`<section class="panel coin-editor"><div class="editor-title"><div><span class="eyebrow">正在編輯 · 位置 ${selectedSlot+1}</span><h2>${esc(coin.name)}</h2></div><button data-action="chooseCoin">${choosingCoin?'收起選擇':'更換硬幣'}</button></div><div class="face-editors">${['front','back'].map(side=>{const m=coatingFor(coin,side);return `<article class="face-editor ${side}"><h3>${side==='front'?'☀ 正面 · 光':'☾ 反面 · 暗'}</h3>${disc(coin[side],side,m?.element,true)}<div class="equipped-coating">${m?`${tag(m.element)} <strong>${esc(m.name)}</strong><span>鍍膜攻擊 +${m.attack}</span>`:'<strong class="missing-state">尚未裝備</strong><span>選一片鍍膜完成此面</span>'}</div><div class="face-total"><small>基礎 ${coin[side]} ＋ 鍍膜 ${m?.attack ?? 0}</small><strong>${coin[side]+(m?.attack ?? 0)} <small>攻擊</small></strong></div><button data-edit-side="${side}" aria-expanded="${editingSide===side}">${editingSide===side?'正在選擇…':m?'更換鍍膜':'＋ 裝備鍍膜'}</button></article>`;}).join('')}</div><button class="remove-coin" data-action="removeCoin">移出此位置</button></section>`;
       if(editingSide){

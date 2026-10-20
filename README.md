@@ -163,3 +163,9 @@ node --test tests/game.test.cjs
 啟動：直接開啟 `index.html`，或上傳整個 `coin-duel` 內容到 GitHub Pages；PWA 安裝及離線功能需 HTTPS 網址。尚未實作真人連線、對局中途存檔、障礙物／地圖與彈射專用排名。
 
 驗證：`node --test --test-isolation=none tests/game.test.cjs tests/pwa.test.cjs tests/flick.test.cjs`；瀏覽器檢查 `node tests/browser-check.cjs`。
+
+## 新硬幣素材（2026-10-21）
+
+素材放在 `assets/coins/`，上傳網站時需一併包含此資料夾。
+中心：`center-light.png` 正面、`center-dark.png` 反面；五行鍍膜圈：`metal/wood/water/fire/earth.png`；最外圈：`frame-light.png` 正面金色、`frame-dark.png` 反面銀色。
+HTML 與彈射 Canvas 均依三層組裝；數字獨立呈現，仍可即時更新。原圖保持完整，以顯示遮罩去除外框背景並露出中心。離線快取版本為 v11。

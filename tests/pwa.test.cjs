@@ -13,7 +13,7 @@ test('manifest and cached files resolve under a GitHub Pages project path',async
 test('offline fetch uses cache; activation keeps unrelated caches',async()=>{
  const handlers={},deleted=[];let claimed=false;
  const hit={offline:true};
- vm.runInNewContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),{URL,self:{registration:{scope:'https://example.github.io/coin-duel/'},clients:{claim:async()=>claimed=true},addEventListener:(type,fn)=>handlers[type]=fn},caches:{keys:async()=>['other-game','coin-duel-shell-v0','coin-duel-shell-v10'],delete:async k=>deleted.push(k),open:async()=>({match:async()=>hit})},fetch:()=>{throw Error('offline');}});
+ vm.runInNewContext(fs.readFileSync(path.join(root,'sw.js'),'utf8'),{URL,self:{registration:{scope:'https://example.github.io/coin-duel/'},clients:{claim:async()=>claimed=true},addEventListener:(type,fn)=>handlers[type]=fn},caches:{keys:async()=>['other-game','coin-duel-shell-v0','coin-duel-shell-v11'],delete:async k=>deleted.push(k),open:async()=>({match:async()=>hit})},fetch:()=>{throw Error('offline');}});
  let work;handlers.activate({waitUntil:p=>work=p});await work;assert.deepEqual(deleted,['coin-duel-shell-v0']);assert.equal(claimed,true);
  handlers.fetch({request:{method:'GET',url:'https://example.github.io/coin-duel/index.html'},respondWith:p=>work=p});assert.equal(await work,hit);
 });
