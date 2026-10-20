@@ -14,16 +14,13 @@
   };
   const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[name]||paths.coin}"/></svg>`;
   const seal=side=>`<div class="sunmoon-seal seal-${side}" aria-hidden="true"><div class="seal-inset">${side==='sun'?'<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="19"/>'+Array.from({length:12},(_,i)=>`<path d="M46 25 50 7 54 25Z" transform="rotate(${i*30} 50 50)"/>`).join('')+'</svg>':'<svg viewBox="0 0 100 100"><path d="M72 19A35 35 0 1 0 75 77 30 30 0 0 1 72 19Z"/></svg>'}</div></div>`;
-  const coin=(value,side,element,large=false)=>`<div class="coin ${side} core-${element||'none'} ${large?'large':''}"><i class="coin-center" aria-hidden="true"></i><i class="coin-coating" aria-hidden="true"></i><i class="coin-frame" aria-hidden="true"></i><strong>${value}</strong></div>`;
-  const images={},names={金:'metal',木:'wood',水:'water',火:'fire',土:'earth'};
-  const imageFor=name=>{if(!images[name]){const img=new Image();img.src='assets/coins/'+name+'.png';images[name]=img;}return images[name];};
+  const names={金:'metal',木:'wood',水:'water',火:'fire',土:'earth'},images={};
+  const sprite=(side,element)=>(side==='front'?'light':'dark')+'-'+(names[element]||'none');
+  const coin=(value,side,element,large=false)=>`<div class="coin ${side} core-${element||'none'} ${large?'large':''}" style="--coin-image:url('assets/coins/composed/${sprite(side,element)}.png')"><strong>${value}</strong></div>`;
+  const imageFor=name=>{if(!images[name]){const img=new Image();img.src='assets/coins/composed/'+name+'.png';images[name]=img;}return images[name];};
   const paintCoin=(ctx,x,y,r,side,element)=>{
-    const face=side==='front'?'light':'dark';
-    const layer=(name,outer,inner,sx,sy,sw)=>{const img=imageFor(name);if(!img.complete||!img.naturalWidth)return;ctx.save();ctx.beginPath();ctx.arc(x,y,r*outer,0,Math.PI*2);if(inner)ctx.arc(x,y,r*inner,0,Math.PI*2,true);ctx.clip('evenodd');ctx.drawImage(img,sx,sy,sw,sw,x-r*outer,y-r*outer,r*outer*2,r*outer*2);ctx.restore();};
-    ctx.fillStyle=side==='front'?'#b69a62':'#55565a';ctx.beginPath();ctx.arc(x,y,r*.98,0,Math.PI*2);ctx.fill();
-    layer('center-'+face,names[element] ? .55 : .83,0,76,62,1095);
-    if(names[element])layer(names[element],.84,.52,18,18,476);
-    layer('frame-'+face,1,.80,16,8,1216);
+    const img=imageFor(sprite(side,element));
+    if(img.complete&&img.naturalWidth)ctx.drawImage(img,x-r,y-r,r*2,r*2);
   };
-  G.presentation={icon,seal,coin,paintCoin,loadCoins:()=>Promise.all(['center-light','center-dark','frame-light','frame-dark',...Object.values(names)].map(name=>{const img=imageFor(name);return img.decode().catch(()=>{});} ))};
+  G.presentation={icon,seal,coin,paintCoin,loadCoins:()=>Promise.all(['light','dark'].flatMap(face=>[...Object.values(names),'none'].map(element=>{const img=imageFor(face+'-'+element);return img.decode().catch(()=>{});} )))};
 })(CoinGame);

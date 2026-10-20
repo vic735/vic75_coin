@@ -1,12 +1,12 @@
 // Bump the version whenever the app assets change. New versions activate after
 // existing game windows close, so a running match keeps a consistent build.
-const CACHE = 'coin-duel-shell-v11';
+const CACHE = 'coin-duel-shell-v15';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './styles.css', './mobile.css', './reference.css', './screen.css', './minimal.css',
   './js/config.js', './js/data.js', './js/gacha.js', './js/battle.js',
   './js/flick.js', './js/flick-ui.js', './js/squad.js', './js/adventure.js', './js/presentation.js', './js/pwa.js', './js/app.js',
-  './assets/coins/center-light.png', './assets/coins/center-dark.png', './assets/coins/frame-light.png', './assets/coins/frame-dark.png', './assets/coins/metal.png', './assets/coins/wood.png', './assets/coins/water.png', './assets/coins/fire.png', './assets/coins/earth.png',
+  './assets/coins/composed/light-metal.png', './assets/coins/composed/light-wood.png', './assets/coins/composed/light-water.png', './assets/coins/composed/light-fire.png', './assets/coins/composed/light-earth.png', './assets/coins/composed/light-none.png', './assets/coins/composed/dark-metal.png', './assets/coins/composed/dark-wood.png', './assets/coins/composed/dark-water.png', './assets/coins/composed/dark-fire.png', './assets/coins/composed/dark-earth.png', './assets/coins/composed/dark-none.png', './assets/coins/composed/coating-metal.png', './assets/coins/composed/coating-wood.png', './assets/coins/composed/coating-water.png', './assets/coins/composed/coating-fire.png', './assets/coins/composed/coating-earth.png',
   './assets/grain.svg', './assets/icon-192.png', './assets/icon-512.png'
 ];
 self.addEventListener('install', event => {

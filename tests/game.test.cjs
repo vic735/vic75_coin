@@ -72,7 +72,7 @@ test('UI flow: ten-draw, equip, replace lineup, three rounds, settlement and rel
   assert.match(app.innerHTML,/MATCH COMPLETE/);assert.match(app.innerHTML,/累積最終戰力/);
   click({action:'battleHistory'});assert.match(app.innerHTML,/第 3 局/);click({action:'closeBattleInfo'});
   assert.equal(G.load().coins.length,13);assert.equal(G.load().tokens,2000);
-  page('draw');click({action:'dismissDraw'});click({pool:'coatings'});click({draw:'1'});assert.match(app.innerHTML,/單面鍍膜/);const film=G.load().coatings.at(-1);click({inspect:film.id});assert.match(app.innerHTML,/僅裝備面生效/);click({action:'closeInspection'});assert.equal(G.load().coatings.length,7);
+  page('draw');click({action:'dismissDraw'});click({pool:'coatings'});click({draw:'1'});assert.doesNotMatch(app.innerHTML,/單面鍍膜/);assert.match(app.innerHTML,/攻擊 \+\d/);const film=G.load().coatings.at(-1);click({inspect:film.id});assert.doesNotMatch(app.innerHTML,/僅裝備面生效|coating-faces/);assert.match(app.innerHTML,/film-disc/);click({action:'closeInspection'});assert.equal(G.load().coatings.length,7);
   for(const p of ['home','coins','coatings','team','draw']){page(p);assert.ok(app.innerHTML.length>100);}
 });
 test('reference arena keeps enemy hidden until toss and used coins cannot be picked again',()=>{

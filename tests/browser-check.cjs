@@ -70,7 +70,7 @@ async function main(){
     })()`),'Toss must render both faces and conceal power until landing');
     await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
     assert.equal(await evaluate("document.querySelectorAll('.hidden-fighter').length"),0);
-    assert.ok(await evaluate("[...document.querySelectorAll('.duel-fighter .coin')].every(c=>c.querySelectorAll('strong').length===1&&c.querySelectorAll('i[aria-hidden=true]').length===3)"));
+    assert.ok(await evaluate("[...document.querySelectorAll('.duel-fighter .coin')].every(c=>c.children.length===1&&c.firstElementChild.tagName==='STRONG'&&getComputedStyle(c).backgroundImage.includes('/composed/'))"));
     if(round===0){
       await checkSizes('Interference');
       assert.ok(await evaluate("(()=>{const r=document.querySelector('[data-action=keep]').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;})()"),'Battle action must stay on screen');
@@ -90,6 +90,7 @@ async function main(){
   await click('[data-draw="10"]');await checkSizes('Draw result');await screenshot('draw-results');
   await click('[data-inspect]');assert.equal(await evaluate("document.querySelectorAll('.battle-info').length"),1);await click('[data-action="closeInspection"]');
   await click('[data-action="dismissDraw"]');await click('[data-pool="coatings"]');await click('[data-draw="1"]');await click('[data-action="dismissDraw"]');
+  await navigate('#coatings');await evaluate("Promise.all([...document.querySelectorAll('.film-disc')].map(el=>{const img=new Image();img.src=getComputedStyle(el).backgroundImage.slice(5,-2);return img.decode()}))");await screenshot('coatings');assert.ok(await evaluate("[...document.querySelectorAll('.collection-tile .film-disc')].every(el=>['金','木','水','火','土'].includes(el.textContent))"));
   await navigate('#coins');await screenshot('collection');await click('[data-inspect]');await click('[data-action="closeInspection"]');
   await navigate('#team');await screenshot('team');
   await navigate('#adventure');await checkSizes('Adventure');await screenshot('adventure');

@@ -169,3 +169,9 @@ node --test tests/game.test.cjs
 素材放在 `assets/coins/`，上傳網站時需一併包含此資料夾。
 中心：`center-light.png` 正面、`center-dark.png` 反面；五行鍍膜圈：`metal/wood/water/fire/earth.png`；最外圈：`frame-light.png` 正面金色、`frame-dark.png` 反面銀色。
 HTML 與彈射 Canvas 均依三層組裝；數字獨立呈現，仍可即時更新。原圖保持完整，以顯示遮罩去除外框背景並露出中心。離線快取版本為 v11。
+
+## 預先合成硬幣（目前版本 v13）
+
+遊戲改用 `assets/coins/composed/` 的透明 PNG 成品，每張 512 × 512。包含五行 × 正反面 10 張，加上未裝鍍膜的正反面 2 張。數字獨立呈現，能即時更新。一般介面與彈射 Canvas 共用相同成品圖，不再於遊戲中拼接中心、鍍膜與外框。
+
+原始素材保留於 `assets/coins/`；需要重新合成時，在 Windows PowerShell 執行 `./tools/build-coins.ps1`。上傳時必須包含 `assets/coins/composed/`。離線快取版本已更新至 v13。
