@@ -11,6 +11,10 @@
   };
   G.validData = d => {
     if (!d || d.version !== 2 || !Number.isSafeInteger(d.tokens) || d.tokens < 0 || !Array.isArray(d.coins) || !Array.isArray(d.coatings) || !Array.isArray(d.team)) return false;
+    if(d.adventure!==undefined){
+      const a=d.adventure;
+      if(!a||!Array.isArray(a.cleared)||new Set(a.cleared).size!==a.cleared.length||!a.cleared.every(n=>Number.isInteger(n)&&n>=1&&n<=100&&(n===1||a.cleared.includes(n-1)))||!['wins','losses','draws'].every(k=>Number.isSafeInteger(a[k])&&a[k]>=0)||a.wins<a.cleared.length)return false;
+    }
     const ids = [...d.coins,...d.coatings].map(x=>x.id);
     if (ids.some(id=>typeof id !== 'string') || new Set(ids).size !== ids.length) return false;
     const elements = Object.keys(G.config.elementWeights);

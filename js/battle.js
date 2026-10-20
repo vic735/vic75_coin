@@ -9,11 +9,12 @@
   };
   G.face = (coin,side) => ({baseDamage:coin[side],coatingAttack:coin.coatings[side].attack ?? 0,damage:coin[side]+(coin.coatings[side].attack ?? 0),element:coin.coatings[side].element});
   G.otherSide = side => side==='front'?'back':'front';
-  G.newMatch = (data,random=Math.random) => {
-    if(data.team.length!==3)throw Error('請先選擇三枚硬幣。');
+  G.newMatch = (data,random=Math.random,opponent=null,mode='standard') => {
+    const count=mode==='death'?1:3;
+    if(data.team.length!==count)throw Error('請先選擇'+count+'枚硬幣。');
     const player=data.team.map(id=>data.coins.find(c=>c.id===id));
     if(player.some(c=>!c || (!c.frontCoatingId || !c.backCoatingId)))throw Error('出戰的三枚硬幣正反兩面都必須裝備鍍膜。');
-    const match={player:player.map(c=>({...c,coatings:{front:{...data.coatings.find(m=>m.id===c.frontCoatingId)},back:{...data.coatings.find(m=>m.id===c.backCoatingId)}}})),ai:Array.from({length:3},()=>({...G.rollCoin(random),coatings:{front:G.rollCoating(random),back:G.rollCoating(random)}})),used:[],aiUsed:[],playerInterference:true,aiInterference:true,history:[],phase:'select'};
+    const match={mode,roundsToWin:count,player:player.map(c=>({...c,coatings:{front:{...data.coatings.find(m=>m.id===c.frontCoatingId)},back:{...data.coatings.find(m=>m.id===c.backCoatingId)}}})),ai:opponent?JSON.parse(JSON.stringify(opponent)):Array.from({length:count},()=>({...G.rollCoin(random),coatings:{front:G.rollCoating(random),back:G.rollCoating(random)}})),used:[],aiUsed:[],playerInterference:mode!=='death',aiInterference:mode!=='death',history:[],ties:[],phase:'select'};
     G.prepareRound(match,random); return match;
   };
   G.prepareRound = (m,random=Math.random) => {
@@ -32,14 +33,32 @@
     m.used.push(id);m.aiUsed.push(m.aiChoice);m.phase='interfere'; return r;
   };
   G.resolveRound = (m,flip) => {
-    if(m.phase!=='interfere' || (flip && !m.playerInterference))throw Error('無法執行干涉');
+    if(m.phase!=='interfere' || (flip && (m.mode==='death'||!m.playerInterference)))throw Error('無法執行干涉');
     const r=m.current;
     r.playerFlipped=!!flip;r.aiFlipped=r.aiWillFlip;
     if(flip){r.playerSide=G.otherSide(r.playerSide);m.playerInterference=false;}
     if(r.aiWillFlip){r.aiSide=G.otherSide(r.aiSide);m.aiInterference=false;}
     r.result=G.power(G.face(r.player,r.playerSide),G.face(r.ai,r.aiSide));
-    r.score=r.result.a===r.result.b?.5:r.result.a>r.result.b?1:0;
-    m.history.push(r);m.phase=m.history.length===3?'finished':'roundEnd';return r;
+    if(m.mode==='death'&&r.result.a===r.result.b&&!r.deathFlipped){
+      r.tied=true;r.round=1;m.phase='deathTie';return r;
+    }
+    r.tied=r.result.a===r.result.b;
+    r.round=m.history.length+1;
+    if(r.tied){
+      r.score=0;
+      m.used=m.used.filter(id=>id!==r.player.id);
+      m.aiUsed=m.aiUsed.filter(id=>id!==r.ai.id);
+      m.ties.push(r);m.phase='roundEnd';return r;
+    }
+    r.score=r.result.a>r.result.b?1:0;
+    m.history.push(r);m.phase=m.history.length===(m.roundsToWin||3)?'finished':'roundEnd';return r;
+  };
+  G.newDeathMatch=(data,id,random=Math.random)=>G.newMatch({...data,team:[id]},random,null,'death');
+  G.deathTieFlip=m=>{
+    if(m.mode!=='death'||m.phase!=='deathTie'||m.current.deathFlipped)throw Error('只有生死模式平手時可翻面一次');
+    const r=m.current;r.deathFlipped=true;
+    r.playerSide=G.otherSide(r.playerSide);r.aiSide=G.otherSide(r.aiSide);
+    m.phase='interfere';return G.resolveRound(m,false);
   };
   G.summary = m => {
     const score=m.history.reduce((s,r)=>s+r.score,0), aiScore=m.history.length-score;

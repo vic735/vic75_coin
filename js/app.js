@@ -2,7 +2,7 @@
   let data=G.load();
   const app=document.querySelector('#app');
   let match=null, pool='coins', results=[], animating=false, timer;
-  let selectedSlot=0, editingSide=null, choosingCoin=false, pendingCoinId=null, battleInfo=null, inspection=null, importedSave=null, saveStatus='';
+  let selectedSlot=0, editingSide=null, choosingCoin=false, pendingCoinId=null, battleInfo=null, inspection=null, importedSave=null, saveStatus='', adventureChapter=0, adventureStage=1, deathCoinId=null, deathPageIndex=0, squadMatch=null, squadFlip=null;
   const {icon,seal}=G.presentation;
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const tag=e=>`<span class="element element-${e}">${e}</span>`;
@@ -22,7 +22,34 @@
   function home(){
     const active=match && match.phase!=='finished';
     const equipped=data.team.filter(id=>fullyEquipped(data.coins.find(c=>c.id===id))).length;
-    return `<section class="royal-hero"><div class="hero-heading"><h1><span>硬幣</span><em>對決</em></h1><p>三枚硬幣 · 三局對決 · 一次干涉</p></div><div class="royal-coins" aria-hidden="true"><div class="pedestal"></div>${seal('sun')}${seal('moon')}</div><a href="#battle" class="button royal-primary hero-battle">${icon('swords')}${active?'繼續對戰':'對戰'}${icon('arrow')}</a><p class="hero-note">${active?'返回進行中的對局':'與 AI 進行三局對戰'}</p></section><div class="royal-shortcuts"><a href="#draw">${icon('cards')}抽卡</a><a href="#coins">${icon('coin')}收藏</a><a href="#team">${icon('team')}編隊</a><a href="#coatings">${icon('film')}鍍膜</a><button data-action="refill">${icon('gift')}補給</button></div><a class="home-ready" href="#team"><span>出戰準備 <strong>${equipped} / 3</strong></span><span>${equipped===3?'隊伍已就緒':'完成硬幣與鍍膜配置'} ›</span></a>`;
+    return `<section class="royal-hero"><div class="hero-heading"><h1><span>硬幣</span><em>對決</em></h1><p>三枚硬幣 · 三局對決 · 一次干涉</p></div><div class="royal-coins" aria-hidden="true"><div class="pedestal"></div>${seal('sun')}${seal('moon')}</div><a href="#battle" class="button royal-primary hero-battle">${icon('swords')}${active?'繼續對戰':'對戰'}${icon('arrow')}</a><p class="hero-note">${active?'返回進行中的對局':'與 AI 進行三局對戰'}</p></section><div class="royal-shortcuts"><a href="#draw">${icon('cards')}抽卡</a><a href="#coins">${icon('coin')}收藏</a><a href="#squad">${icon('team')}3V3</a><a href="#adventure">${icon('swords')}冒險</a><a href="#death">${icon('coin')}生死戰</a><a href="#flick">${icon('swords')}彈射</a></div><a class="home-ready" href="#team"><span>出戰準備 <strong>${equipped} / 3</strong></span><span>${equipped===3?'隊伍已就緒':'完成硬幣與鍍膜配置'} ›</span></a>`;
+  }
+  function adventurePage(){
+    const A=G.adventure,p=A.progress(data),rank=A.rank(data),npc=A.npc(adventureStage),unlocked=A.unlocked(data,adventureStage);
+    const active=match&&match.phase!=='finished';
+    return `<div class="adventure-rank"><div><small>冒險牌位</small><h1>${rank.name}</h1></div><div><strong>${rank.points} 積分</strong><small>${rank.next?'距離'+rank.next.name+' '+(rank.next.points-rank.points)+' 分':'已達最高牌位'}</small></div><progress max="${rank.next?rank.next.points:3000}" value="${rank.points}"></progress></div><div class="adventure-chapter"><button data-chapter="${adventureChapter-1}" ${adventureChapter===0?'disabled':''} aria-label="上一章">‹</button><strong>第 ${adventureChapter+1} 章 · ${p.cleared.length} / 100 通關</strong><button data-chapter="${adventureChapter+1}" ${adventureChapter===9?'disabled':''} aria-label="下一章">›</button></div><div class="adventure-map">${Array.from({length:10},(_,i)=>{const n=adventureChapter*10+i+1,done=p.cleared.includes(n),open=A.unlocked(data,n);return `<button data-stage="${n}" aria-pressed="${adventureStage===n}" class="${adventureStage===n?'selected':''}" ${open?'':'disabled'}><strong>${String(n).padStart(2,'0')}</strong><span>${done?'已通關':!open?'未解鎖':n%10===0?'關主挑戰':'挑戰 NPC'}</span></button>`;}).join('')}</div><section class="adventure-opponent"><div><h2>${npc.name}</h2><span>${npc.style} · ${npc.boss?'章節關主':'三局對決'}</span></div><p>硬幣總傷害 ${npc.team.map(c=>c.front+c.back).join(' / ')} · 鍍膜 +${npc.team[0].coatings.front.attack}</p><p>${p.cleared.includes(adventureStage)?'再次勝利：20 代幣，不增加牌位積分':'首次勝利：'+(npc.boss?300:100)+' 代幣、30 積分'}</p>${active?'<a class="button primary" href="#battle">繼續目前對戰</a>':`<button class="primary" data-action="challenge" ${unlocked?'':'disabled'}>挑戰第 ${adventureStage} 關</button>`}<a href="#team">調整編隊 ›</a></section><details class="adventure-rules"><summary>牌位與獎勵說明</summary><p>${A.ranks.map(r=>r.name+' '+r.points).join(' → ')} 分。每個 NPC 首勝 +30 分；失敗不扣分，重打不重複加分。每 10 關一位關主，通關後解鎖下一關。平手收回硬幣再戰，不發獎勵；落敗無獎勵。這是單機冒險牌位。</p><p>戰績 ${p.wins} 勝 / ${p.draws} 平 / ${p.losses} 敗</p></details>`;
+  }
+  function deathPage(){
+    const coins=data.coins.filter(fullyEquipped);
+    if(!coins.some(c=>c.id===deathCoinId))deathCoinId=coins[0]?.id;
+    const pages=Math.max(1,Math.ceil(coins.length/3));deathPageIndex=Math.min(deathPageIndex,pages-1);
+    const coin=coins.find(c=>c.id===deathCoinId),active=match&&match.phase!=='finished';
+    return `<div class="round-ribbon"><h1>1V1 生死模式</h1></div><section class="battle-intro death-intro"><div class="intro-seals" aria-hidden="true">${seal('sun')}<span>VS</span>${seal('moon')}</div><h2>一枚硬幣，一擲決勝。</h2><p>不可干涉 · 平手雙方翻面一次 · 仍平手重擲</p></section><section class="reserve-panel death-roster"><div class="reserve-heading"><h2>選擇出戰硬幣</h2><span>已裝備兩面的硬幣 · ${coins.length} 枚</span></div>${coins.length?`<div class="reserve-grid">${coins.slice(deathPageIndex*3,deathPageIndex*3+3).map(c=>reserveCard(c,c.id===deathCoinId,false,false,'death-pick')).join('')}</div>`:'<p>請先為一枚硬幣的兩面裝好鍍膜。</p>'}${pages>1?`<div class="roster-pages"><button data-death-page="${deathPageIndex-1}" ${deathPageIndex===0?'disabled':''} aria-label="上一頁硬幣">‹</button><span>${deathPageIndex+1} / ${pages}</span><button data-death-page="${deathPageIndex+1}" ${deathPageIndex===pages-1?'disabled':''} aria-label="下一頁硬幣">›</button></div>`:''}</section><p class="duel-help">${coin?'已選：'+esc(coin.name):'尚無可出戰硬幣'} · <a href="#team">調整鍍膜</a></p><div class="battle-bottom"><a class="button back-button" href="#home" aria-label="返回首頁">←</a>${active?'<a href="#battle" class="button royal-primary">繼續目前對戰</a>':`<button class="royal-primary" data-action="startDeath" ${coin?'':'disabled'}>${icon('swords')}開始生死對決</button>`}</div>`;
+  }
+  function squadPage(){
+    const m=squadMatch,revealed=m&&['tie','finished'].includes(m.phase),deciding=m?.phase==='decide';
+    const ready=data.team.length===3&&data.team.every(id=>fullyEquipped(data.coins.find(c=>c.id===id)));
+    const own=revealed?m.result.player:m?.player||data.team.map(id=>data.coins.find(c=>c.id===id));
+    const enemy=revealed?m.result.ai:[];
+    const cards=(team,who)=>Array.from({length:3},(_,i)=>{
+      const c=team[i],side=revealed?(who==='player'?m.result.playerSides[i]:m.result.aiSides[i]):null;
+      const current=deciding&&who==='player'?G.face(c,m.playerSides[i]):null;
+      const body=current?`${disc(current.baseDamage,m.playerSides[i],current.element)}<small>${tag(current.element)} 鍍膜 +${current.coatingAttack}</small><strong>目前戰力 ${current.damage}</strong><small>翻面後 ${G.face(c,G.otherSide(m.playerSides[i])).damage}（未計五行）</small>`:revealed?`${disc(c[side],side,c.coatings[side].element)}<small>${tag(c.coatings[side].element)} 鍍膜 +${c.coatings[side].attack} · 五行 +${who==='player'?m.result.pairs[i].bonusA:m.result.pairs[i].bonusB}</small><strong>戰力 ${who==='player'?m.result.pairs[i].a:m.result.pairs[i].b}</strong>`:who==='ai'?'<div class="squad-hidden">?</div><small>尚未公開</small>':c?`<div class="squad-pair">${disc(c.front,'front',coatingFor(c,'front')?.element)}${disc(c.back,'back',coatingFor(c,'back')?.element)}</div><small>鍍膜 +${coatingFor(c,'front')?.attack||0} / +${coatingFor(c,'back')?.attack||0}</small>`:'<div class="squad-hidden">＋</div><small>尚未編隊</small>';
+      const flip=revealed&&(who==='player'?m.result.playerFlip:m.result.aiFlip)===i;
+      return deciding&&who==='player'?`<button class="reserve-card squad-card ${squadFlip===i?'chosen is-chosen':''}" data-squad-pick="${i}" aria-pressed="${squadFlip===i}" aria-label="選擇翻轉第 ${i+1} 枚"><span>第 ${i+1} 枚</span>${body}<b>${squadFlip===i?'已選翻面':'點選翻面'}</b></button>`:`<article class="squad-card"><span>第 ${i+1} 枚${flip?' · 已翻面':''}</span>${body}</article>`;
+    }).join('');
+    const active=match&&match.phase!=='finished';
+    return `<div class="squad-heading round-ribbon"><h1>3V3 齊擲</h1><span>${m?'第 '+(m.history.length+(deciding?1:0))+' 次對擲':'一次出戰三枚硬幣'}</span></div><section class="squad-side"><h2>對手 <strong>${revealed?m.result.b:'—'}</strong></h2><div class="squad-grid">${cards(enemy,'ai')}</div></section><div class="squad-status" role="status">${!m?'三組位置各計五行加成，再加總決勝':deciding?'己方擲幣完成 · 對手結果尚未公開':m.phase==='tie'?'平手 · 雙方隨機強化後重擲':m.winner==='player'?'勝利！':'本場落敗'}${m?.phase==='tie'?`<small>我方第 ${m.boost.playerIndex+1} 枚／敵方第 ${m.boost.aiIndex+1} 枚<br>兩面各 +${m.boost.amount}，加成已累積到下一次擲幣</small>`:''}</div><section class="squad-side"><h2>我方 <strong>${revealed?m.result.a:deciding?m.player.reduce((sum,c,i)=>sum+G.face(c,m.playerSides[i]).damage,0):'—'}${deciding?'<small> 未計五行</small>':''}</strong></h2><div class="squad-grid">${cards(own,'player')}</div></section><p class="squad-help">${deciding?'點選一枚干涉翻面，或全部保持。五行加成於對手公開後計算。':revealed?'戰力包含硬幣傷害、鍍膜攻擊與同位置五行加成。':'平手時雙方各隨機一枚，兩面依平手次數 +1、+2、+3…，僅本場有效。'}</p><div class="squad-actions">${!m?active?'<a class="button primary" href="#battle">繼續目前對戰</a>':ready?'<button class="royal-primary" data-action="squadStart">三枚一起擲出</button>':'<a class="button primary" href="#team">先完成三枚編隊</a>':deciding?`<button class="royal-primary" data-action="squadReveal">${squadFlip===null?'全部保持':'翻轉第 '+(squadFlip+1)+' 枚'} · 公開雙方</button>${squadFlip!==null?'<button data-action="squadCancel">取消翻面選擇</button>':''}`:m.phase==='tie'?'<button class="royal-primary" data-action="squadToss">強化完成 · 再擲三枚</button>':'<button class="royal-primary" data-action="squadReset">再來一場</button>'}<a href="#home">返回首頁</a></div>`;
   }
   function collectionTile(item){
     const isCoin=typeof item.front==='number';
@@ -54,8 +81,12 @@
     html+=`<div class="lineup-ready ${ready?'is-ready':''}"><span>${ready?'✓ 三枚硬幣已準備完成':data.team.length<3?'還需要 '+(3-data.team.length)+' 枚硬幣':'還有 '+missing+' 個面未裝備鍍膜'}</span>${ready?'<a class="button primary" href="#battle">前往對戰 ⚔</a>':'<button disabled>完成編隊後即可對戰</button>'}</div>`;
     return html;
   }
+  function reserveCard(c,chosen=false,spent=false,disabled=false,attribute='pick'){
+    const front=coatingFor(c,'front'),back=coatingFor(c,'back');
+    return `<button class="reserve-card ${chosen?'is-chosen':''} ${spent?'is-spent':''}" data-${attribute}="${esc(c.id)}" aria-pressed="${chosen}" ${disabled||spent?'disabled':''}><span class="reserve-name">${esc(c.name)}</span>${chosen?'<span class="chosen-check">✓</span>':''}${disc(c.front,'front',front?.element)}<span class="reserve-stats"><span>正面 <b>${c.front}</b></span><span>反面 <b>${c.back}</b></span></span><span class="reserve-elements"><span>${front?tag(front.element)+' +'+front.attack:'未裝備'}</span><span>${back?tag(back.element)+' +'+back.attack:'未裝備'}</span></span><small>${spent?'已出戰':chosen?'已選擇':'可出戰'}</small></button>`;
+  }
   function battleReserve(roster,used=[],selectable=false){
-    return `<section class="reserve-panel"><div class="reserve-heading"><h2>我方備戰硬幣</h2><span>${selectable?'選擇本回合出戰硬幣':'每枚硬幣僅出戰一次'}</span></div><div class="reserve-grid">${roster.map(c=>{const spent=used.includes(c.id),chosen=selectable&&pendingCoinId===c.id;const front=coatingFor(c,'front'),back=coatingFor(c,'back');return `<button class="reserve-card ${chosen?'is-chosen':''} ${spent?'is-spent':''}" data-pick="${esc(c.id)}" aria-pressed="${chosen}" ${!selectable||spent?'disabled':''}><span class="reserve-name">${esc(c.name)}</span>${chosen?'<span class="chosen-check">✓</span>':''}${disc(c.front,'front',front?.element)}<span class="reserve-stats"><span>正面 <b>${c.front}</b></span><span>反面 <b>${c.back}</b></span></span><span class="reserve-elements"><span>${front?tag(front.element)+' +'+front.attack:'未裝備'}</span><span>${back?tag(back.element)+' +'+back.attack:'未裝備'}</span></span><small>${spent?'已出戰':chosen?'已選擇':'可出戰'}</small></button>`;}).join('')}</div></section>`;
+    return `<section class="reserve-panel"><div class="reserve-heading"><h2>我方備戰硬幣</h2><span>${selectable?'選擇本回合出戰硬幣':'每枚硬幣僅出戰一次'}</span></div><div class="reserve-grid">${roster.map(c=>reserveCard(c,selectable&&pendingCoinId===c.id,used.includes(c.id),!selectable)).join('')}</div></section>`;
   }
   function battleScore(round,s,playerInterference,aiInterference){return `<div class="round-ribbon"><i></i><h1>${round}</h1><i></i></div><div class="duel-scoreboard"><div class="interference-count ally"><span class="target-icon">◎</span><div>我方干涉<small>剩餘 <b>${playerInterference?1:0}</b> 次</small></div></div><div class="duel-scores"><div><small>我方得分</small><strong>${s.score}</strong></div>${icon('swords')}<div><small>敵方得分</small><strong>${s.aiScore}</strong></div></div><div class="interference-count enemy"><div>敵方干涉<small>剩餘 <b>${aiInterference?1:0}</b> 次</small></div><span class="target-icon">◎</span></div></div>`;}
   function battleFighter(c,side,who,bonus,flipped,preview=false){
@@ -67,7 +98,8 @@
     return `<article class="duel-fighter ${who}"><div class="battle-coin-holder ">${disc(f.baseDamage,side,f.element,true)}</div><div class="power-sheet ${side}"><h2>${who==='ally'?'我方':'敵方'}${preview?'出戰預覽':'擲幣結果'}</h2><div class="face-pill ${side}">${preview?'尚未擲幣':side==='front'?'正面（光）':'反面（暗）'}</div><dl><div><dt>基礎傷害</dt><dd>${f.baseDamage}</dd></div><div><dt>鍍膜攻擊 ${tag(f.element)}</dt><dd>+${f.coatingAttack}</dd></div><div><dt>五行加成</dt><dd>${preview?'—':'+'+bonus}</dd></div></dl><div class="sheet-total"><span>${preview?'正面預覽':'最終戰力'}</span><strong>${preview?'—':f.damage+bonus}</strong></div>${flipped?'<span class="flip-status">↻ 已干涉翻面</span>':''}</div></article>`;
   }
   function hiddenFighter(){return `<article class="duel-fighter enemy hidden-fighter"><div class="battle-coin-holder">${disc('?','back',null,true)}</div><div class="power-sheet back"><h2>敵方出戰硬幣</h2><div class="face-pill back">已秘密鎖定</div><p>雙方開始擲幣後<br>同時揭曉出戰硬幣</p><div class="sheet-total"><span>最終戰力</span><strong>—</strong></div></div></article>`;}
-  function history(){return match.history.length?`<details class="panel history"><summary>對局紀錄 · 已完成 ${match.history.length} 局</summary>${match.history.map((r,i)=>`<div class="history-row"><span>第 ${i+1} 局</span><span>${esc(r.player.name)} ${r.playerSide==='front'?'光':'暗'}${tag(G.face(r.player,r.playerSide).element)}${r.playerFlipped?' ↻':''}</span><strong>${r.result.a} : ${r.result.b}</strong><span>${esc(r.ai.name)} ${r.aiSide==='front'?'光':'暗'}${tag(G.face(r.ai,r.aiSide).element)}${r.aiFlipped?' ↻':''}</span><b>${r.score===.5?'平手':r.score===1?'勝利':'落敗'}</b></div>`).join('')}</details>`:'';}
+  function history(){const rounds=[...match.history,...match.ties].sort((a,b)=>a.round-b.round||(a.tied?-1:1));return rounds.length?`<details class="panel history"><summary>對局紀錄 · 已完成 ${match.history.length} 局 · 重戰 ${match.ties.length} 次</summary>${rounds.map(r=>`<div class="history-row"><span>第 ${r.round} 局</span><span>${esc(r.player.name)} ${r.playerSide==='front'?'光':'暗'}${tag(G.face(r.player,r.playerSide).element)}${r.playerFlipped?' ↻':''}</span><strong>${r.result.a} : ${r.result.b}</strong><span>${esc(r.ai.name)} ${r.aiSide==='front'?'光':'暗'}${tag(G.face(r.ai,r.aiSide).element)}${r.aiFlipped?' ↻':''}</span><b>${r.tied?'平手收回':r.score===1?'勝利':'落敗'}</b></div>`).join('')}</details>`:'';}
+
   function battlePage(){
     if(!match){
       const ready=data.team.length===3 && data.team.every(id=>fullyEquipped(data.coins.find(c=>c.id===id)));
@@ -75,31 +107,33 @@
     }
     const s=G.summary(match),r=match.current,selecting=match.phase==='select';
     if(selecting&&!match.player.some(c=>c.id===pendingCoinId&&!match.used.includes(c.id)))pendingCoinId=match.player.find(c=>!match.used.includes(c.id))?.id;
-    const round=match.phase==='finished'?'對戰結算':`第 ${Math.min(match.history.length+(match.phase==='roundEnd'?0:1),3)} / 3 回合`;
-    let html=battleScore(round,s,match.playerInterference,match.aiInterference);
+    const death=match.mode==='death';
+    const round=death?'1V1 生死模式':match.phase==='finished'?'對戰結算':`第 ${Math.min(match.history.length+(match.phase==='roundEnd'&&!r?.tied?0:1),3)} / 3 回合`;
+    let html=battleScore(match.adventureStage?'冒險 '+match.adventureStage+' · '+round:round,s,match.playerInterference,match.aiInterference);
     if(selecting){
       const chosen=match.player.find(c=>c.id===pendingCoinId);
       html+=`<div class="duel-arena">${battleFighter(chosen,'front','ally',0,false,true)}<span class="duel-vs">VS</span>${hiddenFighter()}</div><p class="duel-help">對手已鎖定選擇。選好硬幣後，點擊開始擲幣。</p>`;
     }else{
       const power=r.result||G.power(G.face(r.player,r.playerSide),G.face(r.ai,r.aiSide));
       html+=`<div class="duel-arena">${battleFighter(r.player,r.playerSide,'ally',power.bonusA,r.playerFlipped)}<span class="duel-vs">VS</span>${battleFighter(r.ai,r.aiSide,'enemy',power.bonusB,r.aiFlipped)}</div><div class="duel-elements">${animating?'硬幣旋轉中，落定後揭曉戰力':(power.reasons.join(' · ')||'同屬性：雙方無五行加成')+(!r.result?' · 干涉後重新計算':'')}</div>`;
-      if(match.phase==='interfere')html+=`<section class="duel-intervention"><button class="intervene-button" data-action="flip" ${animating||!match.playerInterference?'disabled':''}>${icon('flip')}<span>干涉翻面<small>${match.playerInterference?'剩餘 1 次':'本場已使用'}</small></span></button><p>對手的干涉決定已鎖定，<br>雙方決定同時生效。</p></section>`;
-      if(match.phase==='roundEnd')html+=`<div class="round-outcome ${r.score===1?'won':''}"><strong>${r.score===.5?'本局平手 · 各得 0.5 分':r.score===1?'本局勝利 · 我方 +1 分':'本局落敗 · 對手 +1 分'}</strong><small>我方${r.playerFlipped?'使用干涉':'保持原面'} · 對手${r.aiFlipped?'使用干涉':'保持原面'}</small></div>`;
-      if(match.phase==='finished')html+=`<section class="royal-result"><div class="simple-result-word">${s.winner==='player'?'WIN':s.winner==='ai'?'LOSE':'DRAW'}</div><span class="eyebrow">MATCH COMPLETE</span><h2>${s.winner==='player'?'你贏得了這場對決':s.winner==='ai'?'對手贏得這場對決':'勢均力敵，整場平手'}</h2><p class="result-score">${s.score} : ${s.aiScore}</p><div class="result-rounds">${match.history.map((h,i)=>`<div><span>第 ${i+1} 局</span><b>${h.score===1?'勝':h.score===.5?'平':'敗'}</b><strong>${h.result.a} <small>vs</small> ${h.result.b}</strong></div>`).join('')}</div><p>累積最終戰力 ${s.power} : ${s.aiPower}</p><small>${s.score===s.aiScore?(s.power===s.aiPower?'勝分與累積戰力皆相同。':'勝分相同，依累積最終戰力決勝。'):'依三局總勝分決勝。'}</small></section>`;
+      if(match.phase==='interfere'&&!death)html+=`<section class="duel-intervention"><button class="intervene-button" data-action="flip" ${animating||!match.playerInterference?'disabled':''}>${icon('flip')}<span>干涉翻面<small>${match.playerInterference?'剩餘 1 次':'本場已使用'}</small></span></button><p>對手的干涉決定已鎖定，<br>雙方決定同時生效。</p></section>`;
+      if(match.phase==='deathTie')html+=`<div class="round-outcome"><strong>平手 · 雙方翻面決勝</strong><small>各翻到另一面一次，再比較戰力</small></div>`;
+      if(match.phase==='roundEnd')html+=`<div class="round-outcome ${r.score===1?'won':''}"><strong>${r.tied?'平手 · 雙方收回硬幣，不計分':r.score===1?'本局勝利 · 我方 +1 分':'本局落敗 · 對手 +1 分'}</strong><small>我方${r.playerFlipped?'使用干涉':'保持原面'} · 對手${r.aiFlipped?'使用干涉':'保持原面'}</small></div>`;
+      if(match.phase==='finished')html+=`<section class="royal-result"><div class="simple-result-word">${s.winner==='player'?'WIN':s.winner==='ai'?'LOSE':'DRAW'}</div><span class="eyebrow">MATCH COMPLETE</span><h2>${s.winner==='player'?'你贏得了這場對決':s.winner==='ai'?'對手贏得這場對決':'勢均力敵，整場平手'}</h2><p class="adventure-reward">${match.adventureReward?`代幣 +${match.adventureReward.tokens} · 積分 +${match.adventureReward.points}${match.adventureReward.promoted?' · 晉升'+match.adventureReward.rank:''}`:''}</p><p class="result-score">${s.score} : ${s.aiScore}</p><div class="result-rounds">${match.history.map((h,i)=>`<div><span>第 ${i+1} 局</span><b>${h.score===1?'勝':h.score===.5?'平':'敗'}</b><strong>${h.result.a} <small>vs</small> ${h.result.b}</strong></div>`).join('')}</div><p>累積最終戰力 ${s.power} : ${s.aiPower}</p><small>${s.score===s.aiScore?(s.power===s.aiPower?'勝分與累積戰力皆相同。':'勝分相同，依累積最終戰力決勝。'):(death?'一局決勝 · 平手才可翻面一次':'依三局總勝分決勝。')}</small></section>`;
     }
     if(selecting)html+=battleReserve(match.player,match.used,true);
-    html+=`<div class="battle-bottom"><a class="button back-button" href="#home" aria-label="返回首頁，保留本場對戰">←</a>${selecting?`<button class="royal-primary" data-action="toss" ${pendingCoinId?'':'disabled'}>${icon('swords')}開始擲幣</button>`:match.phase==='interfere'?`<button class="royal-primary" data-action="keep" ${animating?'disabled':''}>${animating?'擲幣中…':'保持 · 揭曉結果'}</button>`:match.phase==='roundEnd'?'<button class="royal-primary" data-action="next">下一回合 →</button>':'<button class="royal-primary" data-action="rematch">再次備戰 ↻</button>'}</div>`;
+    html+=`<div class="battle-bottom"><a class="button back-button" href="#home" aria-label="返回首頁，保留本場對戰">←</a>${selecting?`<button class="royal-primary" data-action="toss" ${pendingCoinId?'':'disabled'}>${icon('swords')}開始擲幣</button>`:match.phase==='interfere'?`<button class="royal-primary" data-action="keep" ${animating?'disabled':''}>${animating?'擲幣中…':'保持 · 揭曉結果'}</button>`:match.phase==='deathTie'?'<button class="royal-primary" data-action="deathFlip">雙方翻面決勝</button>':match.phase==='roundEnd'?`<button class="royal-primary" data-action="next">${r.tied?(death?'再次擲幣':'重新選幣 · 再戰一次'):'下一回合 →'}</button>`:(match.adventureStage?'<a class="button royal-primary" href="#adventure">返回冒險 ›</a>':'<button class="royal-primary" data-action="rematch">再次備戰 ↻</button>')}</div>`;
     return html+battleExtras();
   }
   function battleExtras(){
-    let html=`<div class="duel-tools"><button data-action="battleRules">戰力與規則</button><span>·</span><button data-action="battleHistory">本場紀錄${match?' '+match.history.length+'/3':''}</button></div>`;
+    let html=`<div class="duel-tools"><a href="#death">生死戰</a><span>·</span><button data-action="battleRules">戰力與規則</button><span>·</span><button data-action="battleHistory">本場紀錄${match?' '+match.history.length+'/'+(match.roundsToWin||3):''}</button></div>`;
     if(battleInfo){
-      const content=battleInfo==='history'?(match&&match.history.length?history().replace('<details','<details open'):'<p>尚未完成任何一局。</p>'):rules().replace('<details','<details open');
+      const content=battleInfo==='history'?(match&&(match.history.length||match.ties.length)?history().replace('<details','<details open'):'<p>尚未完成任何一局。</p>'):rules().replace('<details','<details open');
       html+=`<div class="battle-info-backdrop"><section class="battle-info" role="dialog" aria-modal="true" aria-labelledby="battle-info-title"><div class="info-title"><h2 id="battle-info-title">${battleInfo==='history'?'本場對局紀錄':'戰力與規則'}</h2><button class="info-close" data-action="closeBattleInfo" aria-label="關閉面板">✕</button></div><div class="info-content">${content}</div></section></div>`;
     }
     return html;
   }
-  function rules(){return `<details class="panel rules"><summary>五行與對戰規則</summary><p>相剋（克制方 +2）：金 → 木 → 土 → 水 → 火 → 金</p><p>相生（受到相生方 +1）：金 → 水 → 木 → 火 → 土 → 金</p><p>同屬性無加成；光暗無加成。最終戰力 = 當前面基礎傷害 + 鍍膜攻擊力 + 五行加成。每片鍍膜提供固定 +0～+5 攻擊力，只對裝備的那一面生效；翻面後改用另一面的鍍膜屬性與攻擊力。</p><p>單局平手各得 0.5 分。打滿三局後，依序比較勝分、累積最終戰力，皆相同則整場平手。</p><p>AI 隨機選擇剩餘硬幣；若翻面能改善戰力差，且目前未領先或已是最後一局，就使用尚餘的干涉。</p><p>收藏與編隊自動儲存；進行中的對戰不儲存，重新整理會回到備戰。</p></details>`;}
+  function rules(){if(match?.mode==='death')return '<details class="panel rules"><summary>1V1 生死模式規則</summary><p>雙方各一枚硬幣，隨機擲幣後直接比較含鍍膜與五行加成的最終戰力，不可干涉。若平手，雙方強制翻到另一面一次；仍平手則用原硬幣重新擲幣，新次擲幣平手仍可翻面一次。分出勝負立即結算。</p></details>';return `<details class="panel rules"><summary>五行與對戰規則</summary><p>相剋（克制方 +2）：金 → 木 → 土 → 水 → 火 → 金</p><p>相生（受到相生方 +1）：金 → 水 → 木 → 火 → 土 → 金</p><p>同屬性無加成；光暗無加成。最終戰力 = 當前面基礎傷害 + 鍍膜攻擊力 + 五行加成。每片鍍膜提供固定 +0～+5 攻擊力，只對裝備的那一面生效；翻面後改用另一面的鍍膜屬性與攻擊力。</p><p>單局平手不計分，雙方收回本次硬幣，重新選幣再戰，不占三局局數。已使用的干涉不返還。完成三局分出勝負的對局後，以總勝分決勝。</p><p>AI 隨機選擇剩餘硬幣；若翻面能改善戰力差，且目前未領先或已是最後一局，就使用尚餘的干涉。</p><p>收藏與編隊自動儲存；進行中的對戰不儲存，重新整理會回到備戰。</p></details>`;}
   function installPage(){const p=G.pwa||{};return heading('APP','安裝到手機','從主畫面啟動，離線也能抽卡、編隊與對戰。')+`<section class="panel save-panel"><h2>${p.installed?'已從 App 模式開啟':'加入主畫面'}</h2><p>${esc(p.error||(p.ready?'離線內容已準備完成。':'正在準備離線內容，請保持連線。'))}</p>${p.canInstall?'<button class="primary" data-action="installApp">安裝硬幣對決</button>':''}${!p.installed&&!p.error?'<p>iPhone／iPad：使用 Safari 的分享選單 → 加入主畫面。<br>Android：使用 Chrome 選單 → 安裝應用程式或加入主畫面。</p>':''}<p>收藏、代幣和編隊會自動保存，不需要每次手動匯出。請固定使用相同遊戲網址與瀏覽器。</p><button data-action="durableStorage">保留此裝置的遊戲資料</button><p class="hint">是否允許長期保留由瀏覽器決定；手動清除網站資料仍會刪除進度。安裝不會同步不同裝置的存檔。</p></section>`;}
   function savePage(){return heading('SAVE','存檔管理','收藏、代幣、編隊與兩面鍍膜會在操作後自動儲存。')+`<section class="panel save-panel"><h2>本機存檔</h2><p role="status">${esc(G.storageWarning||saveStatus||'尚未確認儲存狀態')}</p><p>${data.coins.length} 枚硬幣 · ${data.coatings.length} 片鍍膜 · ${data.tokens.toLocaleString()} 代幣</p><button class="primary" data-action="saveNow">立即存檔</button><p class="hint">請使用同一瀏覽器與相同網址開啟。直接開啟 HTML、無痕模式或瀏覽器清理資料，可能讓存檔無法保留。進行中的對戰不會保存。</p></section><section class="panel save-panel"><h2>檔案備份</h2><p>匯出 JSON 到手機或電腦；重開後若進度消失，可選擇檔案恢復。</p><button class="primary" data-action="exportSave">匯出存檔</button><label for="save-file">匯入存檔檔案</label><input id="save-file" type="file" accept=".json,application/json">${importedSave?`<div class="import-preview"><p>即將載入：${importedSave.coins.length} 枚硬幣、${importedSave.coatings.length} 片鍍膜、${importedSave.tokens.toLocaleString()} 代幣。</p><p>確認後會取代目前收藏與編隊，並結束目前對戰。</p><button class="primary" data-action="confirmImport">確認載入此存檔</button><button data-action="cancelImport">取消</button></div>`:''}</section>`;}
   app.addEventListener('change',async e=>{
@@ -109,8 +143,13 @@
     try{if(file.size>10*1024*1024)throw Error('檔案過大，請選擇 10 MB 以下的遊戲存檔');importedSave=G.parseSave(await file.text());render();}
     catch(error){render();toast('匯入失敗：'+error.message);}
   });
-  function render(){const page=location.hash.slice(1)||'home';document.querySelector('#balance').textContent=data.tokens.toLocaleString();document.querySelectorAll('nav a').forEach(a=>{a.classList.toggle('active',a.hash==='#'+(page==='coatings'?'coins':page));if(a.hash==='#'+(page==='coatings'?'coins':page))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});const title=document.querySelector('.header-page-title');if(title)title.textContent=({home:'首頁',draw:'抽卡',coins:'收藏',coatings:'收藏',team:'編隊',battle:'對戰',save:'存檔管理',install:'安裝到手機'})[page]||'首頁';app.className='page-'+page+(page==='draw'&&results.length?' showing-draw-results':'')+(page==='battle'?' phase-'+(match?.phase||'ready'):'');app.innerHTML=page==='install'?installPage():page==='save'?savePage():page==='draw'?drawPage():page==='coins'||page==='coatings'?collection(page):page==='team'?teamPage():page==='battle'?battlePage():home();if(inspection)app.innerHTML+=inventoryDetail();}
+  function render(){G.flickUI?.unmount();const page=location.hash.slice(1)||'home';document.querySelector('#balance').textContent=data.tokens.toLocaleString();document.querySelectorAll('nav a').forEach(a=>{a.classList.toggle('active',a.hash==='#'+(page==='coatings'?'coins':page));if(a.hash==='#'+(page==='coatings'?'coins':page))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});const title=document.querySelector('.header-page-title');if(title)title.textContent=({home:'首頁',draw:'抽卡',coins:'收藏',coatings:'收藏',team:'編隊',battle:'對戰',save:'存檔管理',install:'安裝到手機',adventure:'冒險',death:'生死模式',squad:'3V3 齊擲',flick:'彈射對戰'})[page]||'首頁';app.className='page-'+page+(page==='draw'&&results.length?' showing-draw-results':'')+(page==='battle'&&match?.mode==='death'?' mode-death':'')+(page==='battle'?' phase-'+(match?.phase||'ready'):'');app.innerHTML=page==='flick'?'':page==='squad'?squadPage():page==='death'?deathPage():page==='adventure'?adventurePage():page==='install'?installPage():page==='save'?savePage():page==='draw'?drawPage():page==='coins'||page==='coatings'?collection(page):page==='team'?teamPage():page==='battle'?battlePage():home();if(inspection)app.innerHTML+=inventoryDetail();if(page==='flick')G.flickUI.mount(app,data);}
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;try{
+    if(b.dataset.deathPick){const c=data.coins.find(c=>c.id===b.dataset.deathPick);if(c&&fullyEquipped(c))deathCoinId=c.id;}
+    if(b.dataset.deathPage!==undefined)deathPageIndex=Math.max(0,Number(b.dataset.deathPage)||0);
+    if(b.dataset.squadPick!==undefined){if(squadMatch?.phase!=='decide')return;const index=Number(b.dataset.squadPick);if(!Number.isInteger(index)||index<0||index>2)return;squadFlip=squadFlip===index?null:index;}
+    if(b.dataset.chapter!==undefined){adventureChapter=Math.max(0,Math.min(9,Number(b.dataset.chapter)));adventureStage=adventureChapter*10+1;}
+    if(b.dataset.stage){const n=Number(b.dataset.stage);if(G.adventure.unlocked(data,n))adventureStage=n;}
     if(b.dataset.inspect)inspection=b.dataset.inspect;
     if(b.dataset.pool){pool=b.dataset.pool;results=[];}
     if(b.dataset.draw){results=G.draw(data,pool,Number(b.dataset.draw));save();toast(`成功召喚 ${results.length} 件收藏`);}
@@ -130,6 +169,11 @@
     }
     if(b.dataset.pick){if(!match||match.phase!=='select'||match.used.includes(b.dataset.pick)||!match.player.some(c=>c.id===b.dataset.pick))return;pendingCoinId=b.dataset.pick;}
     switch(b.dataset.action){
+      case 'squadStart':if(match&&match.phase!=='finished')throw Error('請先完成目前對戰');squadMatch=G.squad.create(data);G.squad.toss(squadMatch);squadFlip=null;break;
+      case 'squadToss':G.squad.toss(squadMatch);squadFlip=null;break;
+      case 'squadReveal':G.squad.reveal(squadMatch,squadFlip);break;
+      case 'squadCancel':squadFlip=null;break;
+      case 'squadReset':squadMatch=null;squadFlip=null;break;
       case 'installApp':G.installApp?.().then(ok=>toast(ok?'已接受安裝，請依瀏覽器提示完成':'可從瀏覽器選單加入主畫面'));break;
       case 'durableStorage':G.requestDurableStorage?.().then(ok=>toast(ok?'已允許長期保留本機資料':'目前使用一般自動儲存；瀏覽器未授予長期保留'));break;
       case 'saveNow':toast(save()?'已儲存收藏、代幣與編隊':'無法寫入本機，請匯出存檔備份');break;
@@ -139,7 +183,7 @@
       }
       case 'cancelImport':importedSave=null;break;
       case 'confirmImport':if(importedSave){
-        const restored=importedSave,ok=G.save(restored,true);data=restored;importedSave=null;match=null;animating=false;pendingCoinId=null;selectedSlot=0;editingSide=null;choosingCoin=false;results=[];inspection=null;
+        const restored=importedSave,ok=G.save(restored,true);data=restored;G.flickUI?.reset();importedSave=null;match=null;squadMatch=null;squadFlip=null;animating=false;pendingCoinId=null;selectedSlot=0;editingSide=null;choosingCoin=false;results=[];inspection=null;
         saveStatus=ok?'匯入成功，已儲存於此瀏覽器':'已載入，但本機寫入失敗；請保留備份檔';toast(saveStatus);
       }break;
       case 'closeInspection':inspection=null;break;
@@ -152,13 +196,17 @@
       case 'removeCoin':data.team.splice(selectedSlot,1);selectedSlot=Math.min(selectedSlot,data.team.length,2);editingSide=null;choosingCoin=false;save();toast('硬幣已移出隊伍，收藏與鍍膜保留');break;
       case 'unequipFace':if(editingSide && data.team[selectedSlot]){G.equip(data,data.team[selectedSlot],editingSide,'');save();editingSide=null;toast('此面鍍膜已卸下');}break;
       case 'refill':data.tokens+=1000;save();toast('已領取 1,000 測試代幣');break;
+      case 'challenge':if(match&&match.phase!=='finished')throw Error('請先完成目前對戰');match=G.adventure.start(data,adventureStage);pendingCoinId=null;location.hash='#battle';break;
+      case 'startDeath':if(match&&match.phase!=='finished')throw Error('請先完成目前對戰');match=G.newDeathMatch(data,deathCoinId);pendingCoinId=deathCoinId;location.hash='#battle';break;
+      case 'deathFlip':G.deathTieFlip(match);break;
       case 'start':match=G.newMatch(data);pendingCoinId=null;break;
-      case 'toss':if(animating)return;G.selectCoin(match,pendingCoinId);animating=true;setTimeout(()=>{animating=false;render();},850);break;
+      case 'toss':if(animating)return;G.selectCoin(match,pendingCoinId);animating=true;setTimeout(()=>{animating=false;if(match?.mode==='death'&&match.phase==='interfere')G.resolveRound(match,false);render();},850);break;
       case 'keep':if(animating)return;G.resolveRound(match,false);break;
       case 'flip':if(animating)return;G.resolveRound(match,true);break;
       case 'next':G.prepareRound(match);pendingCoinId=null;break;
-      case 'rematch':match=null;pendingCoinId=null;break;
+      case 'rematch':if(match?.mode==='death')location.hash='#death';match=null;pendingCoinId=null;break;
     }
+    if(match?.phase==='finished'&&G.adventure.settle(data,match))save();
     render();
     if(b.dataset.inspect || ['battleRules','battleHistory'].includes(b.dataset.action))document.querySelector('.info-close')?.focus?.();
     if(b.dataset.editSide || b.dataset.action==='chooseCoin'){const picker=document.querySelector(b.dataset.editSide?'#coating-picker':'#coin-picker');picker?.scrollIntoView?.({behavior:'auto',block:'start'});picker?.focus?.({preventScroll:true});}

@@ -1,11 +1,11 @@
 // Bump the version whenever the app assets change. New versions activate after
 // existing game windows close, so a running match keeps a consistent build.
-const CACHE = 'coin-duel-shell-v1';
+const CACHE = 'coin-duel-shell-v10';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './styles.css', './mobile.css', './reference.css', './screen.css', './minimal.css',
   './js/config.js', './js/data.js', './js/gacha.js', './js/battle.js',
-  './js/presentation.js', './js/pwa.js', './js/app.js',
+  './js/flick.js', './js/flick-ui.js', './js/squad.js', './js/adventure.js', './js/presentation.js', './js/pwa.js', './js/app.js',
   './assets/grain.svg', './assets/icon-192.png', './assets/icon-512.png'
 ];
 self.addEventListener('install', event => {

@@ -37,7 +37,7 @@ async function launch(url){
   await browser.evaluate(`location.hash='#draw'`);await new Promise(r=>setTimeout(r,100));
   await browser.evaluate(`document.querySelector('[data-draw="10"]').click()`);
   const saved=await browser.evaluate('localStorage.getItem(CoinGame.config.storageKey)');assert.equal(JSON.parse(saved).coins.length,13);
-  const cache=await browser.evaluate('caches.open("coin-duel-shell-v1").then(c=>c.keys()).then(keys=>keys.map(k=>k.url))');assert.equal(cache.length,18);
+  const cache=await browser.evaluate('caches.open("coin-duel-shell-v10").then(c=>c.keys()).then(keys=>keys.map(k=>k.url))');assert.equal(cache.length,22);
   await browser.close();browser=null;
   browser=await launch(url);
   assert.equal(await browser.evaluate('localStorage.getItem(CoinGame.config.storageKey)'),saved,'Data survives full Chrome shutdown');

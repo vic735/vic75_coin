@@ -40,6 +40,7 @@ async function main(){
   const checkScreen=async label=>{
     const size=await evaluate("(()=>{const a=document.querySelector('#app');return {pageHeight:document.documentElement.scrollHeight,viewHeight:innerHeight,appHeight:a.clientHeight,contentHeight:a.scrollHeight};})()");
     assert.ok(size.pageHeight<=size.viewHeight+1,label+' page scrolls: '+JSON.stringify(size));
+    if(size.contentHeight>size.appHeight+1){console.log(await evaluate("[...document.querySelector('#app').children].map(e=>({c:e.className,h:e.getBoundingClientRect().height,margin:getComputedStyle(e).margin}))"));await screenshot('overflow');}
     assert.ok(size.contentHeight<=size.appHeight+1,label+' content does not fit: '+JSON.stringify(size));
     await checkWidth(label);
   };
@@ -47,7 +48,15 @@ async function main(){
   await checkSizes('Home');await screenshot('home');
   await navigate('#battle');await checkSizes('Battle ready');await click('[data-action="start"]');
   assert.ok(await evaluate("!!document.querySelector('.hidden-fighter')"));
-  for(let round=0;round<3;round++){
+  await evaluate("window.originalPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
+  await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');await click('[data-action="flip"]');
+  assert.ok(await evaluate("document.querySelector('.round-outcome').textContent.includes('雙方收回硬幣')"));
+  assert.ok(await evaluate("document.querySelector('[data-action=next]').textContent.includes('再戰一次')"));
+  await checkSizes('Tie replay');
+  await click('[data-action="battleHistory"]');assert.ok(await evaluate("document.querySelector('.info-content').textContent.includes('平手收回')"));await click('[data-action="closeBattleInfo"]');
+  await click('[data-action="next"]');assert.equal(await evaluate("document.querySelectorAll('.reserve-card:not(:disabled)').length"),3);
+  await evaluate('CoinGame.power=window.originalPower');
+  for(let round=0;round<50;round++){
     await checkSizes('Select '+round);
     await click('.reserve-card:not(:disabled)');await click('[data-action="toss"]');
     assert.ok(await evaluate(`(()=>{
@@ -66,7 +75,8 @@ async function main(){
     }
     await click('[data-action="keep"]');
     await checkSizes(round<2?'Round end':'Settlement');
-    if(round<2)await click('[data-action="next"]');
+    if(await evaluate("!!document.querySelector('.royal-result')"))break;
+    await click('[data-action="next"]');
   }
   assert.equal(await evaluate("document.querySelectorAll('.royal-result').length"),1);await screenshot('settlement');
   await click('[data-action="battleHistory"]');assert.equal(await evaluate("document.querySelectorAll('.battle-info').length"),1);await click('[data-action="closeBattleInfo"]');
@@ -79,6 +89,49 @@ async function main(){
   await click('[data-action="dismissDraw"]');await click('[data-pool="coatings"]');await click('[data-draw="1"]');await click('[data-action="dismissDraw"]');
   await navigate('#coins');await screenshot('collection');await click('[data-inspect]');await click('[data-action="closeInspection"]');
   await navigate('#team');await screenshot('team');
+  await navigate('#adventure');await checkSizes('Adventure');await screenshot('adventure');
+  await click('[data-action="challenge"]');
+  for(let round=0;round<50;round++){
+    await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
+    await click('[data-action="keep"]');if(await evaluate("!!document.querySelector('.royal-result')"))break;await click('[data-action="next"]');
+  }
+  await checkSizes('Adventure settlement');
+  assert.ok(await evaluate("document.querySelector('.adventure-reward').textContent.includes('積分')"));
+  assert.equal(await evaluate('(()=>{const p=CoinGame.load().adventure;return p.wins+p.losses+p.draws;})()'),1);
+  await navigate('#death');await checkSizes('Death preparation');
+  await click('[data-action="startDeath"]');await checkSizes('Death select');
+  await evaluate("window.deathOriginalPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
+  await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
+  await checkSizes('Death tie');assert.equal(await evaluate("document.querySelectorAll('[data-action=flip]').length"),0);
+  await click('[data-action="deathFlip"]');await checkSizes('Death tie replay');
+  await click('[data-action="next"]');
+  await evaluate("CoinGame.power=()=>({a:8,b:4,bonusA:0,bonusB:0,reasons:[]})");
+  await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
+  await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
+  await evaluate('CoinGame.power=window.deathOriginalPower');
+  await navigate('#squad');await checkSizes('Squad ready');await click('[data-action="squadStart"]');await checkSizes('Squad hidden');
+  assert.equal(await evaluate("document.querySelectorAll('.squad-hidden').length"),3);
+  assert.ok(await evaluate("document.querySelector('.squad-side h2 strong').textContent==='—' && document.querySelectorAll('[data-squad-pick] .coin').length===3"));
+  await click('[data-squad-pick="0"]');await click('[data-squad-pick="2"]');assert.equal(await evaluate("document.querySelectorAll('.squad-card.chosen').length"),1);await checkSizes('Squad flip selection');
+  await evaluate("window.squadPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
+  await click('[data-action="squadReveal"]');await checkSizes('Squad tie');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+1')"));
+  await click('[data-action="squadToss"]');await click('[data-action="squadReveal"]');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+2')"));
+  await click('[data-action="squadToss"]');await evaluate("CoinGame.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]})");await click('[data-action="squadReveal"]');await checkSizes('Squad result');await screenshot('squad');
+  assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('勝利')"));await evaluate('CoinGame.power=window.squadPower');
+  await navigate('#flick');await checkSizes('Flick ready');
+  await click('[data-flick="start"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');await checkSizes('Flick opening');
+  assert.equal(await evaluate("document.querySelectorAll('[data-opening]').length"),3);
+  await click('[data-opening="player-0"]');await click('[data-opening="player-2"]');
+  assert.equal(await evaluate("document.querySelectorAll('.flick-opening .is-chosen').length"),1);
+  await click('[data-flick="begin"]');await checkSizes('Flick arena');
+  await evaluate("new Promise(resolve=>{const poll=()=>{const m=CoinGame.flickUI.getMatch();if(m.phase==='turn'&&m.actor==='player')resolve();else setTimeout(poll,100)};poll()})");
+  const shot=await evaluate("(()=>{const c=CoinGame.flick.alive(CoinGame.flickUI.getMatch(),'player')[0],r=document.querySelector('canvas').getBoundingClientRect();return {x:r.left+c.x*r.width/360,y:r.top+c.y*r.height/520,dy:30*r.height/520}})()");
+  await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:shot.x,y:shot.y,button:'left',clickCount:1});
+  await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:shot.x,y:shot.y+shot.dy,button:'left',buttons:1});
+  await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:shot.x,y:shot.y+shot.dy,button:'left',clickCount:1});
+  assert.equal(await evaluate("CoinGame.flickUI.getMatch().phase"),'moving');
+  await navigate('#home');await navigate('#flick');await checkSizes('Flick resumed');await screenshot('flick');
+  await click('[data-flick="rules"]');assert.ok(await evaluate("document.querySelector('dialog').open"));await evaluate("document.querySelector('dialog').close()");
   await navigate('#save');await checkWidth('Save management');
   await click('[data-action="saveNow"]');
   const persisted=await evaluate("localStorage.getItem(CoinGame.config.storageKey)");

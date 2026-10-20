@@ -8,7 +8,7 @@ function setup(ui=false){
   const elements={'#app':app,'#balance':{},'#toast':{classList:{add(){},remove(){}}}};
   const ctx=vm.createContext({console,Math,Date,location:{hash:'#home'},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>elements[s],querySelectorAll:()=>[]},setTimeout:fn=>{fn();return 1;},clearTimeout(){}});
   ctx.window=ctx;ctx.addEventListener=(name,fn)=>events[name]=fn;ctx.scrollTo=()=>{};
-  for(const name of ['config','data','gacha','battle',...(ui?['presentation','app']:[])])vm.runInContext(fs.readFileSync(path.join(__dirname,'../js',name+'.js'),'utf8'),ctx);
+  for(const name of ['config','data','gacha','battle','squad','adventure',...(ui?['presentation','app']:[])])vm.runInContext(fs.readFileSync(path.join(__dirname,'../js',name+'.js'),'utf8'),ctx);
   return {G:ctx.CoinGame,ctx,memory,app,events,elements};
 }
 test('starter coins, coatings, team and save round trip',()=>{const {G}=setup(),d=G.initialData();assert.deepEqual(Array.from(d.coins,c=>[c.front,c.back]),[[3,3],[1,10],[5,7]]);assert.equal(G.validData(d),true);G.save(d);assert.equal(JSON.stringify(G.load()),JSON.stringify(d));});
@@ -25,7 +25,7 @@ test('each side uses its own coating; flip switches element and attack',()=>{
   const {G}=setup(),d=G.initialData();d.coatings[0].attack=5;d.coatings[1].attack=1;
   const m=G.newMatch(d,()=>0);d.coatings[0].attack=0;
   const c=m.player[0];assert.equal(G.face(c,'front').damage,8);assert.equal(G.face(c,'front').element,'火');assert.equal(G.face(c,'back').damage,4);assert.equal(G.face(c,'back').element,'水');
-  G.selectCoin(m,c.id,()=>0);G.resolveRound(m,true);assert.equal(m.current.result.a,5);assert.equal(G.summary(m).power,5);assert.equal(c.front,3);assert.equal(c.coatings.front.attack,5);
+  G.selectCoin(m,c.id,()=>0);G.resolveRound(m,true);assert.equal(m.current.result.a,5);assert.equal(G.summary(m).power,0);assert.equal(m.current.tied,true);assert.equal(c.front,3);assert.equal(c.coatings.front.attack,5);
 });
 test('same film transfers between faces and coins without duplicates',()=>{
   const {G}=setup(),d=G.initialData(),id=d.coatings[0].id;
@@ -38,10 +38,23 @@ test('10 draws charge correctly and duplicate configurations have unique IDs',()
 test('coatings transfer exclusively and unequip without destroying items',()=>{const {G}=setup(),d=G.initialData(),id=d.coatings[0].id;G.equip(d,d.coins[1].id,'front',id);assert.equal(d.coins[0].frontCoatingId,null);assert.equal(d.coins[1].frontCoatingId,id);G.equip(d,d.coins[1].id,'front','');assert.equal(d.coins[1].frontCoatingId,null);assert.equal(d.coatings.length,6);assert.equal(G.validData(d),true);});
 test('all 25 elemental matchups follow independently specified rules',()=>{const {G}=setup();const e=['金','木','水','火','土'];const expected={金:{金:[0,0],木:[2,0],水:[0,1],火:[0,2],土:[1,0]},木:{金:[0,2],木:[0,0],水:[1,0],火:[0,1],土:[2,0]},水:{金:[1,0],木:[0,1],水:[0,0],火:[2,0],土:[0,2]},火:{金:[2,0],木:[1,0],水:[0,2],火:[0,0],土:[0,1]},土:{金:[0,1],木:[0,2],水:[2,0],火:[1,0],土:[0,0]}};for(const a of e)for(const b of e){const r=G.power({damage:4,element:a},{damage:7,element:b});assert.deepEqual([r.a,r.b],[4+expected[a][b][0],7+expected[a][b][1]]);}});
 test('incomplete or unequipped teams are rejected',()=>{const {G}=setup(),d=G.initialData();d.team.pop();assert.throws(()=>G.newMatch(d));d.team.push(d.coins[2].id);d.coins[0].frontCoatingId=null;assert.throws(()=>G.newMatch(d));});
-test('100 full matches finish three rounds with no reused coins and one interference',()=>{const {G}=setup();for(let i=0;i<100;i++){const m=G.newMatch(G.initialData());for(let round=0;round<3;round++){const c=m.player.find(c=>!m.used.includes(c.id));G.selectCoin(m,c.id);const locked=m.current.aiWillFlip;G.resolveRound(m,round===0);assert.equal(m.current.aiFlipped,locked);if(round<2)G.prepareRound(m);}assert.equal(m.phase,'finished');assert.equal(m.history.length,3);assert.equal(new Set(m.used).size,3);assert.equal(new Set(m.aiUsed).size,3);assert.equal(m.history.filter(r=>r.playerFlipped).length,1);assert.ok(m.history.filter(r=>r.aiFlipped).length<=1);assert.equal(G.summary(m).score+G.summary(m).aiScore,3);assert.throws(()=>G.resolveRound(m,false));}});
+test('100 full matches finish three rounds with no reused coins and one interference',()=>{const {G}=setup();for(let i=0;i<100;i++){const m=G.newMatch(G.initialData());for(let round=0;round<100&&m.phase!=='finished';round++){const c=m.player.find(c=>!m.used.includes(c.id));G.selectCoin(m,c.id);const locked=m.current.aiWillFlip;G.resolveRound(m,round===0);assert.equal(m.current.aiFlipped,locked);if(m.phase!=='finished')G.prepareRound(m);}assert.equal(m.phase,'finished');assert.equal(m.history.length,3);assert.equal(new Set(m.used).size,3);assert.equal(new Set(m.aiUsed).size,3);assert.equal([...m.history,...m.ties].filter(r=>r.playerFlipped).length,1);assert.ok([...m.history,...m.ties].filter(r=>r.aiFlipped).length<=1);assert.equal(G.summary(m).score+G.summary(m).aiScore,3);assert.throws(()=>G.resolveRound(m,false));}});
 test('AI commitment identical regardless of player interference choice',()=>{const {G}=setup(),m=G.newMatch(G.initialData(),()=>.2);G.selectCoin(m,m.player[0].id,()=>.8);const clone=JSON.parse(JSON.stringify(m)),committed=m.current.aiWillFlip;G.resolveRound(m,true);G.resolveRound(clone,false);assert.equal(m.current.aiFlipped,committed);assert.equal(clone.current.aiFlipped,committed);assert.notEqual(m.current.playerSide,clone.current.playerSide);});
-test('coin cannot be reused and consumed interference cannot be used twice',()=>{const {G}=setup(),m=G.newMatch(G.initialData());G.selectCoin(m,m.player[0].id);G.resolveRound(m,true);G.prepareRound(m);assert.throws(()=>G.selectCoin(m,m.player[0].id));G.selectCoin(m,m.player[1].id);assert.throws(()=>G.resolveRound(m,true));G.resolveRound(m,false);});
-test('tie scores then cumulative power then whole-match tie',()=>{const {G}=setup();const m={history:[{score:1,result:{a:9,b:1}},{score:0,result:{a:2,b:3}},{score:.5,result:{a:4,b:4}}]};assert.equal(G.summary(m).winner,'player');m.history[0].result.a=2;assert.equal(G.summary(m).winner,'tie');m.history[0].result.a=1;assert.equal(G.summary(m).winner,'ai');});
+test('coin cannot be reused and consumed interference cannot be used twice',()=>{const {G}=setup(),m=G.newMatch(G.initialData());G.selectCoin(m,m.player[0].id);G.resolveRound(m,true);const tied=m.current.tied;G.prepareRound(m);if(!tied)assert.throws(()=>G.selectCoin(m,m.player[0].id));G.selectCoin(m,m.player[1].id);assert.throws(()=>G.resolveRound(m,true));G.resolveRound(m,false);});
+test('ties return both coins, retain spent interference and replay even the third round',()=>{
+ const {G}=setup(),m=G.newMatch(G.initialData());
+ G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});
+ const id=m.player[0].id;
+ G.selectCoin(m,id);G.resolveRound(m,true);
+ assert.equal(m.history.length,0);assert.equal(m.ties.length,1);assert.equal(m.used.length,0);assert.equal(m.aiUsed.length,0);assert.equal(m.playerInterference,false);assert.equal(G.summary(m).score,0);assert.equal(G.summary(m).aiScore,0);
+ for(let i=0;i<2;i++){G.prepareRound(m);G.selectCoin(m,m.player.find(c=>!m.used.includes(c.id)).id);G.power=()=>({a:9,b:1,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);}
+ const used=[...m.used],aiUsed=[...m.aiUsed];
+ G.prepareRound(m);G.selectCoin(m,m.player.find(c=>!m.used.includes(c.id)).id);G.power=()=>({a:4,b:4,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);
+ assert.equal(m.phase,'roundEnd');assert.equal(m.history.length,2);assert.deepEqual([...m.used],used);assert.deepEqual([...m.aiUsed],aiUsed);assert.equal(m.current.round,3);
+ G.prepareRound(m);G.selectCoin(m,m.player.find(c=>!m.used.includes(c.id)).id);G.power=()=>({a:1,b:9,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);
+ assert.equal(m.phase,'finished');assert.equal(G.summary(m).score,2);assert.equal(G.summary(m).aiScore,1);assert.equal(m.ties.length,2);
+});
+
 test('invalid persistence recovers, unavailable storage reports failure',()=>{const {G,ctx,memory}=setup();memory.set(G.config.storageKey,'{bad');assert.equal(G.validData(G.load()),true);ctx.localStorage.setItem=()=>{throw Error('blocked');};assert.equal(G.save(G.initialData()),false);});
 test('UI flow: ten-draw, equip, replace lineup, three rounds, settlement and reload',()=>{
   const {ctx,events,app,memory,G}=setup(true);
@@ -53,8 +66,8 @@ test('UI flow: ten-draw, equip, replace lineup, three rounds, settlement and rel
   click({action:'chooseCoin'});click({assign:d.coins[0].id});
   click({editSide:'front'});click({film:d.coatings[0].id});
   page('battle');click({action:'start'});
-  for(let i=0;i<3;i++){
-    d=JSON.parse(memory.get(G.config.storageKey));click({pick:d.team[i]});click({action:'toss'});assert.match(app.innerHTML,/對手的干涉決定已鎖定/);click({action:i===0?'flip':'keep'});if(i<2)click({action:'next'});
+  for(let i=0;i<100&&!app.innerHTML.includes('MATCH COMPLETE');i++){
+    d=JSON.parse(memory.get(G.config.storageKey));click({action:'toss'});assert.match(app.innerHTML,/對手的干涉決定已鎖定/);click({action:i===0?'flip':'keep'});if(!app.innerHTML.includes('MATCH COMPLETE'))click({action:'next'});
   }
   assert.match(app.innerHTML,/MATCH COMPLETE/);assert.match(app.innerHTML,/累積最終戰力/);
   click({action:'battleHistory'});assert.match(app.innerHTML,/第 3 局/);click({action:'closeBattleInfo'});
@@ -117,4 +130,125 @@ test('import validates before confirmation and restores collection and lineup',a
   assert.equal(JSON.stringify(G.load()),JSON.stringify(saved));
   await events.change({target:{id:'save-file',files:[{size:4,text:async()=>'null'}]}});
   assert.equal(JSON.stringify(G.load()),JSON.stringify(saved));assert.doesNotMatch(app.innerHTML,/確認載入此存檔/);
+});
+
+test('100 adventure opponents are stable, legal, and ramp in difficulty',()=>{
+ const {G}=setup();for(let stage=1;stage<=100;stage++){
+  const n=G.adventure.npc(stage);assert.equal(JSON.stringify(n),JSON.stringify(G.adventure.npc(stage)));
+  assert.equal(n.team.length,3);for(const c of n.team){assert.ok(c.front>=1&&c.back>=1&&c.front+c.back>=6&&c.front+c.back<=12);for(const f of Object.values(c.coatings))assert.ok(f.attack>=0&&f.attack<=5);}
+ }
+ assert.equal(G.adventure.npc(1).team[0].coatings.front.attack,0);assert.equal(G.adventure.npc(100).team[0].coatings.front.attack,5);
+});
+test('adventure unlocks, first-clear ranking and rewards persist without duplicate payout',()=>{
+ const {G}=setup(),d=G.initialData(),A=G.adventure;
+ assert.throws(()=>A.start(d,2));assert.equal(A.rank(d).name,'青銅');
+ const finish=(stage,winner)=>{const m=A.start(d,stage,()=>0);m.phase='finished';m.history=Array.from({length:3},()=>({score:winner==='player'?1:winner==='ai'?0:.5,result:{a:5,b:5}}));return m;};
+ let m=finish(1,'ai'),before=d.tokens;A.settle(d,m);assert.equal(d.tokens,before);assert.equal(A.unlocked(d,2),false);
+ m=finish(1,'tie');A.settle(d,m);assert.equal(A.rank(d).points,0);assert.equal(A.unlocked(d,2),false);
+ for(let stage=1;stage<=100;stage++){
+  m=finish(stage,'player');const reward=A.settle(d,m);assert.equal(reward.points,30);const saved=d.tokens;assert.equal(A.settle(d,m),null);assert.equal(d.tokens,saved);
+ }
+ assert.equal(A.rank(d).name,'傳說');assert.equal(A.rank(d).points,3000);assert.equal(A.unlocked(d,101),false);
+ m=finish(1,'player');assert.equal(A.settle(d,m).points,0);assert.equal(m.adventureReward.tokens,20);
+ assert.equal(G.validData(d),true);G.save(d);assert.equal(JSON.stringify(G.load().adventure),JSON.stringify(d.adventure));
+ d.adventure.cleared=[2];assert.equal(G.validData(d),false);
+});
+test('adventure UI plays three rounds, settles once and returns to campaign',()=>{
+ const {G,ctx,events,app}=setup(true);ctx.location.hash='#adventure';events.hashchange();assert.match(app.innerHTML,/青銅/);
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+ click({action:'challenge'});assert.equal(ctx.location.hash,'#battle');
+ for(let i=0;i<100&&!app.innerHTML.includes('MATCH COMPLETE');i++){click({action:'toss'});click({action:'keep'});if(!app.innerHTML.includes('MATCH COMPLETE'))click({action:'next'});}
+ assert.match(app.innerHTML,/返回冒險/);const p=G.load().adventure;assert.equal(p.wins+p.losses+p.draws,1);
+ events.hashchange();assert.equal(G.load().adventure.wins+p.losses+p.draws,1);
+});
+
+test('early adventure rolls varied legal coins within each face cap',()=>{
+ const {G}=setup();
+ for(let chapter=0;chapter<2;chapter++){
+  const configs=new Set(),totals=new Set(),cap=chapter===0?4:5;
+  for(let stage=chapter*10+1;stage<=chapter*10+10;stage++){
+   for(const c of G.adventure.npc(stage).team){
+    assert.ok(c.front>=1&&c.front<=cap&&c.back>=1&&c.back<=cap);
+    assert.ok(c.front+c.back>=6&&c.front+c.back<=(chapter===0?7:8));
+    assert.equal(c.coatings.front.attack,0);assert.equal(c.coatings.back.attack,0);
+    configs.add(c.front+'/'+c.back);totals.add(c.front+c.back);
+   }
+  }
+  assert.ok(configs.size>=3);assert.ok(totals.size>=2);
+ }
+});
+
+test('death match uses one coin and only allows a simultaneous flip after a tie',()=>{
+ const {G}=setup(),data=G.initialData();data.team=[];
+ const m=G.newDeathMatch(data,data.coins[0].id,()=>0);
+ assert.equal(m.player.length,1);assert.equal(m.ai.length,1);assert.equal(m.playerInterference,false);assert.equal(m.aiInterference,false);
+ assert.throws(()=>G.deathTieFlip(m));
+ G.selectCoin(m,m.player[0].id,()=>0);assert.equal(m.current.aiWillFlip,false);
+ assert.throws(()=>G.resolveRound(m,true));
+ G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);
+ assert.equal(m.phase,'deathTie');assert.equal(m.history.length,0);
+ const before=[m.current.playerSide,m.current.aiSide];G.deathTieFlip(m);
+ assert.equal(m.current.playerSide,G.otherSide(before[0]));assert.equal(m.current.aiSide,G.otherSide(before[1]));
+ assert.equal(m.phase,'roundEnd');assert.equal(m.used.length,0);assert.equal(m.aiUsed.length,0);assert.throws(()=>G.deathTieFlip(m));
+ G.prepareRound(m);G.selectCoin(m,m.player[0].id);G.power=()=>({a:9,b:1,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);
+ assert.equal(m.phase,'finished');assert.equal(m.history.length,1);assert.equal(G.summary(m).winner,'player');
+});
+test('death UI auto resolves toss and presents a tie-only flip button',()=>{
+ const {G,ctx,events,app}=setup(true);ctx.location.hash='#death';events.hashchange();
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+ click({action:'startDeath'});G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});click({action:'toss'});
+ assert.match(app.innerHTML,/雙方翻面決勝/);assert.doesNotMatch(app.innerHTML,/data-action="flip"/);
+ G.power=()=>({a:7,b:4,bonusA:0,bonusB:0,reasons:[]});click({action:'deathFlip'});assert.match(app.innerHTML,/MATCH COMPLETE/);
+ assert.equal(G.load().adventure,undefined);
+});
+
+test('squad commits AI flip before player decision and resolves all three elemental pairs once',()=>{
+ const {G}=setup(),m=G.squad.create(G.initialData(),()=>.2);
+ G.squad.toss(m,()=>.8);const original=[...m.playerSides],enemy=[...m.aiSides],locked=m.aiFlip;
+ const clone=JSON.parse(JSON.stringify(m));assert.throws(()=>G.squad.reveal(m,3));assert.equal(m.phase,'decide');
+ const expectedPlayer=[...original];expectedPlayer[1]=G.otherSide(expectedPlayer[1]);const expectedAi=[...enemy];if(locked!==null)expectedAi[locked]=G.otherSide(expectedAi[locked]);
+ const expected=m.player.map((c,i)=>G.power(G.face(c,expectedPlayer[i]),G.face(m.ai[i],expectedAi[i])));
+ const result=G.squad.reveal(m,1);G.squad.reveal(clone,null);
+ assert.equal(result.a,expected.reduce((s,p)=>s+p.a,0));assert.equal(result.b,expected.reduce((s,p)=>s+p.b,0));
+ assert.equal(result.aiFlip,clone.result.aiFlip);assert.equal(result.aiFlip,locked);
+ assert.deepEqual([...result.playerSides],expectedPlayer);assert.equal(result.pairs.length,3);assert.throws(()=>G.squad.reveal(m,2));
+});
+test('squad repeated ties add +1 then +2 to both faces without modifying collection or revealed snapshots',()=>{
+ const {G}=setup(),data=G.initialData(),original=JSON.stringify(data),m=G.squad.create(data,()=>.2);
+ const before=m.player[0].front,back=m.player[0].back,enemy=m.ai[0].front;
+ G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});
+ G.squad.toss(m,()=>0);G.squad.reveal(m,null,()=>0);
+ assert.equal(m.phase,'tie');assert.equal(m.ties,1);assert.equal(m.player[0].front,before+1);assert.equal(m.player[0].back,back+1);assert.equal(m.ai[0].front,enemy+1);
+ assert.equal(m.result.player[0].front,before);assert.equal(m.boost.amount,1);
+ G.squad.toss(m,()=>0);G.squad.reveal(m,2,()=>0);
+ assert.equal(m.player[0].front,before+3);assert.equal(m.player[0].back,back+3);assert.equal(m.boost.amount,2);assert.equal(m.history[0].player[0].front,before);
+ assert.equal(JSON.stringify(data),original);assert.equal(G.validData(data),true);
+ G.power=()=>({a:6,b:4,bonusA:0,bonusB:0,reasons:[]});G.squad.toss(m);G.squad.reveal(m);assert.equal(m.phase,'finished');assert.equal(m.winner,'player');assert.throws(()=>G.squad.toss(m));
+});
+test('squad UI shows own toss while hiding enemy until confirmation',()=>{
+ const {G,ctx,events,app}=setup(true);ctx.location.hash='#squad';events.hashchange();
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+ click({action:'squadStart'});assert.match(app.innerHTML,/己方擲幣完成/);assert.equal((app.innerHTML.match(/squad-hidden/g)||[]).length,3);assert.equal((app.innerHTML.match(/目前戰力 [0-9]/g)||[]).length,3);
+ click({squadPick:'0'});click({squadPick:'2'});assert.equal((app.innerHTML.match(/aria-pressed="true"/g)||[]).length,1);
+ assert.match(app.innerHTML,/翻轉第 3 枚/);click({action:'squadCancel'});assert.match(app.innerHTML,/全部保持/);
+ G.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]});click({action:'squadReveal'});assert.match(app.innerHTML,/勝利！/);assert.doesNotMatch(app.innerHTML,/尚未公開/);assert.equal((app.innerHTML.match(/戰力 [0-9]/g)||[]).length,6);
+});
+
+test('death preparation uses shared battle cards and paginates all eligible coins',async()=>{
+ const {G,ctx,events,app}=setup(true),d=G.load();
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+ ctx.location.hash='#death';events.hashchange();assert.doesNotMatch(app.innerHTML,/<select/);
+ assert.equal((app.innerHTML.match(/data-death-pick=/g)||[]).length,3);
+ click({deathPick:d.coins[1].id});assert.match(app.innerHTML,/已選：硬幣B/);
+ const extra=G.makeCoin('第四枚',2,4),front=G.makeCoating('火片','火'),back=G.makeCoating('水片','水');
+ d.coins.push(extra);d.coatings.push(front,back);G.equip(d,extra.id,'front',front.id);G.equip(d,extra.id,'back',back.id);
+ await events.change({target:{id:'save-file',files:[{size:500,text:async()=>JSON.stringify(d)}]}});click({action:'confirmImport'});
+ click({deathPage:'1'});assert.equal((app.innerHTML.match(/data-death-pick=/g)||[]).length,1);assert.match(app.innerHTML,/第四枚/);
+ click({deathPick:extra.id});assert.match(app.innerHTML,/已選：第四枚/);click({action:'startDeath'});assert.match(app.innerHTML,/第四枚/);
+});
+test('squad AI uses own face gain and does not consult opponent toss',()=>{
+ const {G}=setup(),m=G.squad.create(G.initialData(),()=>0);
+ m.ai.forEach((c,i)=>{c.front=2;c.back=i===1?9:3;c.coatings.front.attack=0;c.coatings.back.attack=0;});
+ G.squad.toss(m,()=>0);assert.equal(m.aiFlip,1);
+ const clone=JSON.parse(JSON.stringify(m));clone.phase='ready';clone.player.forEach(c=>{c.front=99;c.back=1;});G.squad.toss(clone,()=>0);assert.equal(clone.aiFlip,1);
 });
