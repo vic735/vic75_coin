@@ -1,9 +1,9 @@
 // Bump the version whenever the app assets change. New versions activate after
 // existing game windows close, so a running match keeps a consistent build.
-const CACHE = 'coin-duel-shell-v31';
+const CACHE = 'coin-duel-shell-v39';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
-  './js/vendor/qrcode.js', './js/vendor/jsQR.js', './js/vendor/qrcode-LICENSE.txt', './js/vendor/jsQR-LICENSE.txt', './js/network/qr.js', './network.css', './js/network/protocol.js', './js/network/signaling.js', './js/network/commitReveal.js', './js/network/multiplayer.js', './js/network/webrtc.js', './js/network/session.js', './js/network/connectionUI.js',
+  './js/vendor/qrcode.js', './js/vendor/jsQR.js', './js/vendor/qrcode-LICENSE.txt', './js/vendor/jsQR-LICENSE.txt', './js/network/qr.js', './network.css', './home.css', './js/network/protocol.js', './js/network/signaling.js', './js/network/commitReveal.js', './js/network/multiplayer.js', './js/network/webrtc.js', './js/network/session.js', './js/network/connectionUI.js',
   './styles.css', './mobile.css', './reference.css', './screen.css', './minimal.css',
   './js/config.js', './js/data.js', './js/gacha.js', './js/battle.js',
   './js/flick.js', './js/flick-ui.js', './js/squad.js', './js/adventure.js', './js/progression.js', './js/presentation.js', './js/pwa.js', './js/tour.js', './js/help.js', './js/app.js',

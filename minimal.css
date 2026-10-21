@@ -87,6 +87,7 @@ main.page-adventure{padding-bottom:6px}
 main.page-adventure,main.page-ranked{display:flex;flex-direction:column;gap:7px;overflow:hidden;padding:6px 0}
 .progress-heading{display:flex;align-items:center;justify-content:space-between;flex:none}.progress-heading h1{font-size:20px;margin:0}.progress-heading a{font-size:12px;color:#526775}
 .progress-modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;flex:none}.progress-modes button{min-height:44px;padding:6px 2px;font-size:11px}.progress-modes .selected{background:#617482;color:white}
+.progress-modes.has-friends{grid-template-columns:repeat(5,minmax(0,1fr))}.progress-modes.has-friends button,.progress-modes.has-friends .progress-friends{font-size:10px;min-height:44px;padding:6px 2px;text-align:center;line-height:1.4}.progress-modes .progress-friends{background:#e3e5df;color:#526775;border-color:#bfc9c8}
 .progress-summary{display:flex;flex-direction:column;gap:5px;padding:8px 12px;background:#e3e2d9;border-radius:8px;flex:none}.progress-summary strong{font-size:13px}.progress-summary small{font-size:10px;color:#697175}.progress-summary progress,.ranked-card progress{width:100%;height:6px;accent-color:#617482}
 .page-adventure .adventure-chapter{margin:0;flex:none}.page-adventure .adventure-map{gap:5px;flex:none}.page-adventure .adventure-map button{min-height:44px;height:44px;padding:3px;gap:1px}.page-adventure .adventure-map strong{font-size:15px}
 .page-adventure .adventure-opponent{margin:0;padding:9px;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}.page-adventure .adventure-opponent h2{font-size:14px}.page-adventure .adventure-opponent p{margin:4px 0}.page-adventure .adventure-opponent .primary{min-height:42px;margin:5px 0}.progress-footnote{font-size:10px;text-align:center;margin:0;color:#697175;flex:none}
@@ -141,3 +142,5 @@ main.page-flick{display:flex;flex-direction:column;gap:6px;overflow:hidden;paddi
 .coin-inventory-card>.coin-usage{top:43px;right:8px}
 
 .coin-picker .coin-assigned{background:#dce9de;color:#3e624d;border-color:#bbcdbd}.coin-picker .coin-assigned:disabled{opacity:1}
+/* Token balance sits at the right edge of the shared header. */
+.game-header .guide-actions{margin-left:0}.game-header .wallet{margin-left:0;margin-right:0;flex:none;gap:5px;min-height:36px}.game-header .wallet .currency-seal{display:grid;place-items:center;width:23px;height:23px;border:0;background:none;border-radius:0;box-shadow:none;flex:none}.game-header .currency-seal svg{display:block;width:23px;height:23px;stroke:#9b865b;stroke-width:1.1;fill:#dfd2ad}.game-header .currency-seal svg path{fill:#b5a074;stroke:#9b865b;stroke-width:.7}.game-header .wallet strong{font-variant-numeric:tabular-nums}

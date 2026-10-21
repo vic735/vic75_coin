@@ -79,7 +79,7 @@ test('UI flow: ten-draw, equip, replace lineup, three rounds, settlement and rel
 test('reference arena keeps enemy hidden until toss and used coins cannot be picked again',()=>{
   const {ctx,events,app,G}=setup(true);
   const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
-  assert.match(app.innerHTML,/royal-hero/);assert.match(app.innerHTML,/與 AI 進行三局對戰/);
+  assert.match(app.innerHTML,/royal-hero/);assert.match(app.innerHTML,/冒險破關與好友連線/);
   const choose=G.selectCoin;let tosses=0;
   G.selectCoin=(...args)=>{tosses++;return choose(...args);};
   ctx.location.hash='#battle';events.hashchange();click({action:'start'});
@@ -125,8 +125,8 @@ test('unreadable save is preserved until explicit replacement',()=>{
 });
 test('removed save page falls back home and automatic saves survive reload',()=>{
   const {G,ctx,events,app}=setup(true);
-  events.click({target:{closest:()=>({dataset:{action:'refill'}})}});
-  const saved=G.load();assert.equal(saved.tokens,4000);
+  events.click({target:{closest:()=>({dataset:{draw:'1'}})}});
+  const saved=G.load();assert.equal(saved.tokens,2900);
   ctx.location.hash='#save';events.hashchange();assert.equal(app.className,'page-home');
   assert.doesNotMatch(app.innerHTML,/save-file|saveNow|confirmImport|exportSave/);
   const reopened=setup(true,saved);assert.equal(JSON.stringify(reopened.G.load()),JSON.stringify(saved));

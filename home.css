@@ -1,0 +1,43 @@
+/* Reference layout, using the game's existing paper/slate palette. */
+main.page-home{display:flex;flex-direction:column;gap:9px;padding:5px 0 8px;overflow:hidden}
+.home-masthead{display:flex;align-items:center;gap:9px;min-height:20px;flex:none;color:#657780;line-height:1.2}
+.home-masthead>span:first-child{font-size:9px;font-weight:650;letter-spacing:2px}.home-masthead>strong{font-size:13px;font-weight:650;letter-spacing:1px;color:#344b58}.home-masthead .home-edition{margin-left:auto;font-size:9px;color:#8a8d84;letter-spacing:1px}
+.page-home .home-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1.25fr 1.12fr .9fr .9fr;gap:8px;flex:1;min-height:0;margin:0}
+main.page-home .home-tile{position:relative;display:block;overflow:hidden;isolation:isolate;min-height:0;min-width:0;padding:0;margin:0;text-decoration:none;text-align:left;color:#304651;border:1px solid #c2c5bc;border-radius:9px;background:#e1dfd6;box-shadow:0 1px 2px #28353c08;transition:border-color .18s,background .18s;line-height:1.15}
+main.page-home .home-tile:hover{background:#d9dcd4;border-color:#9eaaa9;transform:none}
+main.page-home .home-tile:focus-visible{outline:2px solid #617482;outline-offset:-3px}
+main.page-home .home-tile:active{background:#d2d7d2}
+main.page-home .home-tile-placeholder{grid-column:1;grid-row:3 / 5;background:#e5e4dd;border-color:#d0d2c8;box-shadow:none;pointer-events:none}
+.home-tile-placeholder::before,.home-tile-placeholder::after{display:none}
+.page-home .home-tile-challenge{grid-column:1/-1;background:linear-gradient(115deg,#e5e0d3,#d7d9cf);border-color:#beb8a7}
+.page-home .home-tile-battle{background:linear-gradient(125deg,#e5e6df,#ccd5d6)}
+.page-home .home-tile-rank{background:linear-gradient(125deg,#e5e2d8,#d6d5c9)}
+.page-home .home-tile-squad{background:linear-gradient(130deg,#e5e6de,#cfd6d3)}
+.page-home .home-tile-adventure{background:linear-gradient(125deg,#e6e2d8,#d2cbbb)}
+.page-home .home-tile-collection{background:linear-gradient(125deg,#e4e1d8,#d2d0c3)}
+.page-home .home-tile-team{background:linear-gradient(125deg,#e3e4dc,#d0d6d1)}
+.home-tile::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,#eeece6b8 0%,#eeece670 29%,#eeece600 63%);pointer-events:none}
+.home-tile::after{content:'';position:absolute;left:12px;top:0;width:25px;height:2px;background:#a9ad9c;opacity:.6;z-index:2}
+.home-tile-challenge::after{background:#ad9c73;width:42px}
+main.page-home .home-tile>.home-tile-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;filter:saturate(.48);opacity:.87}
+.home-tile-copy{position:relative;z-index:2;display:flex;flex-direction:column;align-items:flex-start;padding:13px 12px;pointer-events:none}
+.home-tile-copy h2{font:750 clamp(23px,3.7dvh,33px)/1.1 var(--display);letter-spacing:1px;margin:0;color:#304651}
+.home-tile-team .home-tile-copy h2{font-size:clamp(20px,3.2dvh,28px)}
+.home-tile-en{font-size:8px;letter-spacing:1.8px;margin-top:5px;color:#738087;font-weight:550}
+.home-tile-arrow{font:350 26px/1 var(--display);color:#8a8b76;margin-top:7px}
+.home-tile-challenge .home-tile-copy{padding:16px 17px}
+.home-tile-challenge h2{font-size:clamp(30px,5.2dvh,44px);letter-spacing:2px}
+.home-tile-challenge .home-tile-en{font-size:10px;letter-spacing:3px;margin-top:7px}
+.home-tile-challenge .home-tile-arrow{font-size:32px;margin-top:9px}
+.home-tile-note{position:absolute;bottom:0;left:0;right:0;min-height:23px;display:flex;align-items:center;padding:4px 11px;z-index:2;font-size:9px;letter-spacing:.1px;color:#697577;background:linear-gradient(90deg,#e8e6dded,#e8e6dd6b);border-top:1px solid #eae8dd80;font-weight:500}
+.home-mode-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;flex:none;min-height:35px}
+.home-mode-links a{display:flex;gap:4px;align-items:center;justify-content:center;text-decoration:none;font-size:10px;color:#5f737d;border:1px solid #d5d8d1;border-radius:6px;background:#e6e6df;min-height:35px}
+.home-mode-links svg{width:15px;height:15px;flex:none;stroke-width:1.4}.home-mode-links a>span{color:#89958f;margin-left:2px;font-size:16px}.home-mode-links a:hover{background:#dde1d9}
+@media(max-height:650px){
+ main.page-home{gap:6px;padding:3px 0 6px}.home-masthead{min-height:17px}.page-home .home-menu{gap:6px;grid-template-rows:1.2fr 1.1fr .9fr .9fr}
+ .home-tile-copy{padding:9px 10px}.home-tile-copy h2{font-size:22px}.home-tile-en{font-size:7px;margin-top:3px;letter-spacing:1px}.home-tile-arrow{font-size:22px;margin-top:3px}
+ .home-tile-challenge .home-tile-copy{padding:11px 14px}.home-tile-challenge h2{font-size:30px}.home-tile-challenge .home-tile-en{font-size:8px;margin-top:5px}.home-tile-challenge .home-tile-arrow{font-size:26px;margin-top:3px}
+ .home-tile-note{font-size:8px;padding:3px 9px;min-height:20px}.home-mode-links,.home-mode-links a{min-height:32px}.home-mode-links a{font-size:9px}.home-masthead .home-edition{font-size:8px}
+}
+@media(min-width:700px){.home-tile-copy h2{font-size:30px}.home-tile-copy{padding:17px 20px}.home-tile-challenge h2{font-size:39px}.home-tile-note{padding-left:20px}.home-mode-links a{font-size:12px}.home-tile-en{font-size:10px}}
+@media(prefers-reduced-motion:reduce){main.page-home .home-tile{transition:none}}
