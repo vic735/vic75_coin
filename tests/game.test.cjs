@@ -3,8 +3,9 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
 const path=require('node:path');
-function setup(ui=false){
+function setup(ui=false,savedData=null){
   const memory=new Map(),events={},app={innerHTML:'',addEventListener:(name,fn)=>events[name]=fn};
+  if(savedData)memory.set('coin-duel-v01',JSON.stringify(savedData));
   const elements={'#app':app,'#balance':{},'#toast':{classList:{add(){},remove(){}}}};
   const ctx=vm.createContext({console,Math,Date,location:{hash:'#home'},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>elements[s],querySelectorAll:()=>[]},setTimeout:fn=>{fn();return 1;},clearTimeout(){}});
   ctx.window=ctx;ctx.addEventListener=(name,fn)=>events[name]=fn;ctx.scrollTo=()=>{};
@@ -103,7 +104,8 @@ test('lineup editor swaps coins, equips one face, reports missing films and pers
   const oldBack=d.coins.find(c=>c.id===a).backCoatingId;
   const film=d.coins.find(c=>c.id===b).frontCoatingId;
   click({editSide:'front'});assert.match(app.innerHTML,/選擇正面鍍膜/);
-  click({film});d=G.load();
+  const beforeEquip=JSON.stringify(G.load());click({film});assert.equal(JSON.stringify(G.load()),beforeEquip);
+  click({slot:'0'});click({editSide:'front'});click({action:'unequipFace'});click({slot:'1'});click({editSide:'front'});click({film});d=G.load();
   assert.equal(d.coins.find(c=>c.id===a).frontCoatingId,film);
   assert.equal(d.coins.find(c=>c.id===a).backCoatingId,oldBack);
   assert.equal(d.coins.find(c=>c.id===b).frontCoatingId,null);
@@ -121,15 +123,13 @@ test('unreadable save is preserved until explicit replacement',()=>{
   assert.equal(G.save(d),false);assert.equal(memory.get(G.config.storageKey),'broken save');
   assert.equal(G.save(d,true),true);assert.equal(JSON.stringify(G.load()),JSON.stringify(d));
 });
-test('import validates before confirmation and restores collection and lineup',async()=>{
-  const {G,ctx,events,app,memory}=setup(true);const saved=G.initialData();G.draw(saved,'coins',10);saved.team.reverse();
-  const before=memory.get(G.config.storageKey);ctx.location.hash='#save';events.hashchange();
-  await events.change({target:{id:'save-file',files:[{size:100,text:async()=>JSON.stringify(saved)}]}});
-  assert.equal(memory.get(G.config.storageKey),before);assert.match(app.innerHTML,/確認載入此存檔/);
-  events.click({target:{closest:()=>({dataset:{action:'confirmImport'}})}});
-  assert.equal(JSON.stringify(G.load()),JSON.stringify(saved));
-  await events.change({target:{id:'save-file',files:[{size:4,text:async()=>'null'}]}});
-  assert.equal(JSON.stringify(G.load()),JSON.stringify(saved));assert.doesNotMatch(app.innerHTML,/確認載入此存檔/);
+test('removed save page falls back home and automatic saves survive reload',()=>{
+  const {G,ctx,events,app}=setup(true);
+  events.click({target:{closest:()=>({dataset:{action:'refill'}})}});
+  const saved=G.load();assert.equal(saved.tokens,4000);
+  ctx.location.hash='#save';events.hashchange();assert.equal(app.className,'page-home');
+  assert.doesNotMatch(app.innerHTML,/save-file|saveNow|confirmImport|exportSave/);
+  const reopened=setup(true,saved);assert.equal(JSON.stringify(reopened.G.load()),JSON.stringify(saved));
 });
 
 test('100 adventure opponents are stable, legal, and ramp in difficulty',()=>{
@@ -198,7 +198,7 @@ test('death UI auto resolves toss and presents a tie-only flip button',()=>{
  const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
  click({action:'startDeath'});G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});click({action:'toss'});
  assert.match(app.innerHTML,/雙方翻面決勝/);assert.doesNotMatch(app.innerHTML,/data-action="flip"/);
- G.power=()=>({a:7,b:4,bonusA:0,bonusB:0,reasons:[]});click({action:'deathFlip'});assert.match(app.innerHTML,/MATCH COMPLETE/);
+ G.power=()=>({a:7,b:4,bonusA:0,bonusB:0,reasons:[]});click({action:'deathFlip'});assert.doesNotMatch(app.innerHTML,/MATCH COMPLETE/);assert.match(app.innerHTML,/查看結算/);click({action:'deathResult'});assert.match(app.innerHTML,/MATCH COMPLETE/);
  assert.equal(G.load().adventure,undefined);
 });
 
@@ -209,7 +209,7 @@ test('squad commits AI flip before player decision and resolves all three elemen
  const expectedPlayer=[...original];expectedPlayer[1]=G.otherSide(expectedPlayer[1]);const expectedAi=[...enemy];if(locked!==null)expectedAi[locked]=G.otherSide(expectedAi[locked]);
  const expected=m.player.map((c,i)=>G.power(G.face(c,expectedPlayer[i]),G.face(m.ai[i],expectedAi[i])));
  const result=G.squad.reveal(m,1);G.squad.reveal(clone,null);
- assert.equal(result.a,expected.reduce((s,p)=>s+p.a,0));assert.equal(result.b,expected.reduce((s,p)=>s+p.b,0));
+ assert.equal(result.a,expected.filter(p=>p.a>p.b).length);assert.equal(result.b,expected.filter(p=>p.b>p.a).length);
  assert.equal(result.aiFlip,clone.result.aiFlip);assert.equal(result.aiFlip,locked);
  assert.deepEqual([...result.playerSides],expectedPlayer);assert.equal(result.pairs.length,3);assert.throws(()=>G.squad.reveal(m,2));
 });
@@ -231,18 +231,18 @@ test('squad UI shows own toss while hiding enemy until confirmation',()=>{
  click({action:'squadStart'});assert.match(app.innerHTML,/己方擲幣完成/);assert.equal((app.innerHTML.match(/squad-hidden/g)||[]).length,3);assert.equal((app.innerHTML.match(/目前戰力 [0-9]/g)||[]).length,3);
  click({squadPick:'0'});click({squadPick:'2'});assert.equal((app.innerHTML.match(/aria-pressed="true"/g)||[]).length,1);
  assert.match(app.innerHTML,/翻轉第 3 枚/);click({action:'squadCancel'});assert.match(app.innerHTML,/全部保持/);
- G.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]});click({action:'squadReveal'});assert.match(app.innerHTML,/勝利！/);assert.doesNotMatch(app.innerHTML,/尚未公開/);assert.equal((app.innerHTML.match(/戰力 [0-9]/g)||[]).length,6);
+ G.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]});click({action:'squadReveal'});assert.doesNotMatch(app.innerHTML,/勝利！/);assert.match(app.innerHTML,/查看結算/);click({action:'squadResult'});assert.match(app.innerHTML,/勝利！/);assert.doesNotMatch(app.innerHTML,/尚未公開/);assert.equal((app.innerHTML.match(/戰力 [0-9]/g)||[]).length,6);
 });
 
 test('death preparation uses shared battle cards and paginates all eligible coins',async()=>{
- const {G,ctx,events,app}=setup(true),d=G.load();
+ const fixture=setup(),G=fixture.G,d=G.initialData();
+ const extra=G.makeCoin('第四枚',2,4),front=G.makeCoating('火片','火'),back=G.makeCoating('水片','水');
+ d.coins.push(extra);d.coatings.push(front,back);G.equip(d,extra.id,'front',front.id);G.equip(d,extra.id,'back',back.id);
+ const {ctx,events,app}=setup(true,d);
  const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
  ctx.location.hash='#death';events.hashchange();assert.doesNotMatch(app.innerHTML,/<select/);
  assert.equal((app.innerHTML.match(/data-death-pick=/g)||[]).length,3);
  click({deathPick:d.coins[1].id});assert.match(app.innerHTML,/已選：硬幣B/);
- const extra=G.makeCoin('第四枚',2,4),front=G.makeCoating('火片','火'),back=G.makeCoating('水片','水');
- d.coins.push(extra);d.coatings.push(front,back);G.equip(d,extra.id,'front',front.id);G.equip(d,extra.id,'back',back.id);
- await events.change({target:{id:'save-file',files:[{size:500,text:async()=>JSON.stringify(d)}]}});click({action:'confirmImport'});
  click({deathPage:'1'});assert.equal((app.innerHTML.match(/data-death-pick=/g)||[]).length,1);assert.match(app.innerHTML,/第四枚/);
  click({deathPick:extra.id});assert.match(app.innerHTML,/已選：第四枚/);click({action:'startDeath'});assert.match(app.innerHTML,/第四枚/);
 });
@@ -251,4 +251,20 @@ test('squad AI uses own face gain and does not consult opponent toss',()=>{
  m.ai.forEach((c,i)=>{c.front=2;c.back=i===1?9:3;c.coatings.front.attack=0;c.coatings.back.attack=0;});
  G.squad.toss(m,()=>0);assert.equal(m.aiFlip,1);
  const clone=JSON.parse(JSON.stringify(m));clone.phase='ready';clone.player.forEach(c=>{c.front=99;c.back=1;});G.squad.toss(clone,()=>0);assert.equal(clone.aiFlip,1);
+});
+
+test('squad winner follows individual wins regardless of total power; tied wins replay',()=>{
+ const {G}=setup();
+ for(const [scores,expected,a,b] of [
+  [[[9,8],[9,8],[1,10]],'player',2,1],
+  [[[8,9],[8,9],[10,1]],'ai',1,2],
+  [[[5,4],[5,4],[2,4]],'player',2,1],
+  [[[10,1],[1,2],[3,3]],null,1,1],
+  [[[3,3],[5,4],[2,2]],'player',1,0]
+ ]){
+  const m=G.squad.create(G.initialData(),()=>0);G.squad.toss(m,()=>0);let i=0;
+  G.power=()=>{const [a,b]=scores[i++];return {a,b,bonusA:0,bonusB:0,reasons:[]};};
+  const r=G.squad.reveal(m,null,()=>0);assert.equal(r.a,a);assert.equal(r.b,b);
+  assert.equal(m.phase,expected?'finished':'tie');if(expected)assert.equal(m.winner,expected);else assert.equal(m.boost.amount,1);
+ }
 });

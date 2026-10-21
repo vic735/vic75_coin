@@ -19,7 +19,7 @@
     if(flipIndex!==null)m.playerSides[flipIndex]=G.otherSide(m.playerSides[flipIndex]);
     if(m.aiFlip!==null)m.aiSides[m.aiFlip]=G.otherSide(m.aiSides[m.aiFlip]);
     const pairs=m.player.map((c,i)=>G.power(G.face(c,m.playerSides[i]),G.face(m.ai[i],m.aiSides[i])));
-    const a=pairs.reduce((sum,p)=>sum+p.a,0),b=pairs.reduce((sum,p)=>sum+p.b,0);
+    const a=pairs.filter(p=>p.a>p.b).length,b=pairs.filter(p=>p.b>p.a).length;
     // Preserve the revealed values before a tie boosts the next toss.
     const result={pairs,a,b,playerFlip:flipIndex,aiFlip:m.aiFlip,
       player:JSON.parse(JSON.stringify(m.player)),ai:JSON.parse(JSON.stringify(m.ai)),

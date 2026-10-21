@@ -1,5 +1,5 @@
 (function(G){
-  const F=G.flick={width:360,height:520,radius:24,maxSpeed:850,stepSeconds:1/120};
+  const F=G.flick={width:360,height:520,radius:16,maxSpeed:850,stepSeconds:1/120};
   F.damage=(a,b)=>G.config.counters[a]===b?3:G.config.generates[b]===a?2:1;
   F.alive=(m,owner)=>m.coins.filter(c=>c.owner===owner&&c.hp>0);
   F.stats=(m,owner)=>{const c=F.alive(m,owner),values=c.map(c=>c.hp);return {sum:values.reduce((a,b)=>a+b,0),count:c.length,spread:c.length?Math.max(...values)-Math.min(...values):0};};
@@ -47,7 +47,7 @@
     const live=m.coins.filter(c=>c.hp>0),r=F.radius;
     for(const c of live){c.x+=c.vx*dt;c.y+=c.vy*dt;const drag=Math.exp(-1.45*dt);c.vx*=drag;c.vy*=drag;
       if(c.x<r){c.x=r;c.vx=Math.abs(c.vx)*.8;}if(c.x>F.width-r){c.x=F.width-r;c.vx=-Math.abs(c.vx)*.8;}
-      if(c.y<r){c.y=r;c.vy=Math.abs(c.vy)*.8;}if(c.y>F.height-r){c.y=F.height-r;c.vy=-Math.abs(c.vy)*.8;}
+      if(c.y<r){c.y=r;c.vy=Math.abs(c.vy)*.8;}if(c.y>(m.height||F.height)-r){c.y=(m.height||F.height)-r;c.vy=-Math.abs(c.vy)*.8;}
     }
     for(let i=0;i<live.length;i++)for(let j=i+1;j<live.length;j++){
       const a=live[i],b=live[j];if(a.hp<=0||b.hp<=0)continue;
@@ -63,7 +63,7 @@
         if(target.hp===0){target.vx=0;target.vy=0;}
       }
     }
-    for(const c of live){c.x=Math.max(r,Math.min(F.width-r,c.x));c.y=Math.max(r,Math.min(F.height-r,c.y));}
+    for(const c of live){c.x=Math.max(r,Math.min(F.width-r,c.x));c.y=Math.max(r,Math.min((m.height||F.height)-r,c.y));}
     m.shot.elapsed+=dt;
     if(!F.alive(m,'player').length||!F.alive(m,'ai').length||m.shot.elapsed>8||live.every(c=>c.hp<=0||Math.hypot(c.vx,c.vy)<4))F.finishAction(m,random);
   };

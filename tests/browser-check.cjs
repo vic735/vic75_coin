@@ -35,7 +35,7 @@ async function main(){
   const screenshot=async name=>{const r=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(r.data,'base64'));};
   const checkWidth=async label=>assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),label+' has horizontal overflow');
   const navigate=async hash=>{await evaluate(`location.hash=${JSON.stringify(hash)};new Promise(resolve=>setTimeout(resolve,80))`);};
-  const click=async selector=>{const clicked=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)return false;e.click();return true;})()`);assert.ok(clicked,'Cannot click '+selector);};
+  const click=async selector=>{const clicked=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)return false;e.click();return true;})()`);assert.ok(clicked,'Cannot click '+selector);if(await evaluate("!!document.querySelector('.coin-flip')")){assert.ok(await evaluate("[...document.querySelectorAll('.coin-flip')].every(el=>el.querySelector('.coin.front')&&el.querySelector('.coin.back')&&getComputedStyle(el.querySelector('.coin-flip-rotor')).animationName==='coin-turn-over')"),'Flip must rotate two distinct faces');await evaluate('new Promise(resolve=>setTimeout(resolve,680))');}};
   const sizes=[[320,568],[360,640],[390,700],[390,844],[430,800],[1024,768]];
   const checkScreen=async label=>{
     const size=await evaluate("(()=>{const a=document.querySelector('#app');return {pageHeight:document.documentElement.scrollHeight,viewHeight:innerHeight,appHeight:a.clientHeight,contentHeight:a.scrollHeight};})()");
@@ -45,6 +45,36 @@ async function main(){
     await checkWidth(label);
   };
   const checkSizes=async label=>{for(const [w,h] of sizes){await viewport(w,h);await checkScreen(label+' '+w+'x'+h);}await viewport(390,700);};
+  // Walkthrough operates real controls and only advances after the requested action.
+  assert.ok(await evaluate('CoinGame.tour.active'));
+  const originalSave=await evaluate('localStorage.getItem(CoinGame.config.storageKey)');
+  await screenshot('tutorial-guided');
+  for(let i=0;i<30&&await evaluate('CoinGame.tour.active');i++){
+    await evaluate('new Promise(r=>setTimeout(r,220))');
+    const state=await evaluate('(()=>{const t=CoinGame.tour.getState(),s=CoinGame.tour.recipes[t.key][t.index];return {index:t.index,action:s.action}})()');
+    if(state.action){assert.ok(await evaluate("document.querySelector('[data-tour-next]').disabled"));await click(state.action);}
+    else await click('[data-tour-next]');
+    await evaluate('new Promise(r=>setTimeout(r,130))');
+  }
+  assert.equal(await evaluate('CoinGame.tour.active'),false);
+  assert.equal(await evaluate('CoinGame.load().coins.length'),4);assert.equal(await evaluate('CoinGame.load().coatings.length'),7);
+  assert.ok(await evaluate("CoinGame.load().coins.some(c=>c.frontCoatingId===CoinGame.load().coatings.at(-1).id)"));
+  assert.ok(await evaluate("JSON.parse(localStorage.getItem('coin-duel-help-v2')).beginner"));
+  // Restore the test fixture, retaining tutorial completion preferences.
+  await evaluate(`localStorage.setItem(CoinGame.config.storageKey,${JSON.stringify(originalSave)})`);await cdp('Page.reload');await evaluate('new Promise(r=>setTimeout(r,350))');
+  const guideModes=[['#battle','standard'],['#adventure','adventure'],['#death','death'],['#squad','squad'],['#flick','flick']];
+  for(const [route,key] of guideModes){
+    await navigate(route);assert.equal(await evaluate('CoinGame.tour.getState().key'),key);assert.ok(await evaluate('CoinGame.tour.active'));
+    for(const [w,h] of sizes){await viewport(w,h);await evaluate('new Promise(r=>setTimeout(r,200))');assert.ok(await evaluate("(()=>{const r=document.querySelector('.walkthrough-card').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight})()"));}
+    await viewport(390,700);await click('[data-tour-read]');assert.ok(await evaluate("document.querySelector('.guide-dialog').open"));await click('.guide-dialog [data-close]');await evaluate('new Promise(r=>setTimeout(r,50))');assert.ok(await evaluate('CoinGame.tour.active'));
+    await click('[data-tour-stop]');assert.ok(await evaluate(`JSON.parse(localStorage.getItem('coin-duel-help-v2'))[${JSON.stringify(key)}]`));
+    await click('[data-table]');assert.equal(await evaluate("document.querySelectorAll('.element-matrix tbody td').length"),25);
+    assert.equal(await evaluate("document.querySelector('.element-matrix tbody').rows[2].cells[1].textContent"),key==='flick'?'−2':'+1/+0');
+    await click('.guide-dialog [data-close]');await evaluate('new Promise(r=>setTimeout(r,30))');
+    await navigate('#home');await navigate(route);assert.equal(await evaluate('CoinGame.tour.active'),false);
+    await click('[data-guide]');assert.ok(await evaluate('CoinGame.tour.active'));await click('[data-tour-stop]');
+  }
+  await navigate('#team');await click('[data-edit-side="front"]');assert.equal(await evaluate("document.querySelectorAll('.film-option.is-occupied:disabled').length"),5);await click('[data-action="closePicker"]');await navigate('#home');
   await evaluate("CoinGame.presentation.loadCoins()");
   await evaluate("(()=>{const e=document.createElement('div');e.id='asset-preview';e.style='position:fixed;inset:0;background:#eeece6;z-index:100;padding:24px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:center';e.innerHTML=['金','木','水','火','土'].flatMap(el=>['front','back'].map(side=>CoinGame.presentation.coin(12,side,el))).join('');document.body.append(e);e.querySelectorAll('.coin').forEach(c=>{c.style.width='140px';c.style.height='140px';c.querySelector('strong').style.fontSize='40px'})})()");
   await screenshot('coin-materials');await evaluate("document.querySelector('#asset-preview').remove()");
@@ -111,7 +141,7 @@ async function main(){
   await click('[data-action="next"]');
   await evaluate("CoinGame.power=()=>({a:8,b:4,bonusA:0,bonusB:0,reasons:[]})");
   await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
-  await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
+  await checkSizes('Death revealed results');assert.equal(await evaluate("!!document.querySelector('.royal-result')"),false);await click('[data-action="deathResult"]');await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
   await evaluate('CoinGame.power=window.deathOriginalPower');
   await navigate('#squad');await checkSizes('Squad ready');await click('[data-action="squadStart"]');await checkSizes('Squad hidden');
   assert.equal(await evaluate("document.querySelectorAll('.squad-hidden').length"),3);
@@ -120,33 +150,40 @@ async function main(){
   await evaluate("window.squadPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
   await click('[data-action="squadReveal"]');await checkSizes('Squad tie');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+1')"));
   await click('[data-action="squadToss"]');await click('[data-action="squadReveal"]');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+2')"));
-  await click('[data-action="squadToss"]');await evaluate("CoinGame.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]})");await click('[data-action="squadReveal"]');await checkSizes('Squad result');await screenshot('squad');
+  await click('[data-action="squadToss"]');await evaluate("CoinGame.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]})");await click('[data-action="squadReveal"]');await checkSizes('Squad revealed results');assert.equal(await evaluate("document.querySelectorAll('.squad-card .coin').length"),6);await click('[data-action="squadResult"]');await checkSizes('Squad result');await screenshot('squad');
   assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('勝利')"));await evaluate('CoinGame.power=window.squadPower');
   await navigate('#flick');await checkSizes('Flick ready');
   await click('[data-flick="start"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');await checkSizes('Flick opening');
   assert.equal(await evaluate("document.querySelectorAll('[data-opening]').length"),3);
   await click('[data-opening="player-0"]');await click('[data-opening="player-2"]');
   assert.equal(await evaluate("document.querySelectorAll('.flick-opening .is-chosen').length"),1);
-  await click('[data-flick="begin"]');await checkSizes('Flick arena');
+  await click('[data-flick="begin"]');await checkSizes('Flick arena');await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+  assert.ok(await evaluate("(()=>{const canvas=document.querySelector('.flick-arena canvas').getBoundingClientRect(),box=document.querySelector('.flick-arena').getBoundingClientRect();return Math.abs(canvas.left-box.left)<1&&Math.abs(canvas.right-box.right)<1&&Math.abs(canvas.height-box.height)<1&&!document.querySelector('.flick-turn,.page-flick .flick-hint')&&document.querySelectorAll('.flick-name.is-active').length===1})()"));
+
   await evaluate("new Promise(resolve=>{const poll=()=>{const m=CoinGame.flickUI.getMatch();if(m.phase==='turn'&&m.actor==='player')resolve();else setTimeout(poll,100)};poll()})");
-  const shot=await evaluate("(()=>{const c=CoinGame.flick.alive(CoinGame.flickUI.getMatch(),'player')[0],r=document.querySelector('canvas').getBoundingClientRect();return {x:r.left+c.x*r.width/360,y:r.top+c.y*r.height/520,dy:30*r.height/520}})()");
+  const shot=await evaluate("(()=>{const c=CoinGame.flick.alive(CoinGame.flickUI.getMatch(),'player')[0],r=document.querySelector('canvas').getBoundingClientRect();return {x:r.left+c.x*r.width/360,y:r.top+c.y*r.height/(CoinGame.flickUI.getMatch().height||520),dy:30*r.height/(CoinGame.flickUI.getMatch().height||520)}})()");
   await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:shot.x,y:shot.y,button:'left',clickCount:1});
   await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:shot.x,y:shot.y+shot.dy,button:'left',buttons:1});
   await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:shot.x,y:shot.y+shot.dy,button:'left',clickCount:1});
   assert.equal(await evaluate("CoinGame.flickUI.getMatch().phase"),'moving');
+  await click('[data-table]');const pausedElapsed=await evaluate('CoinGame.flickUI.getMatch().shot.elapsed');await evaluate('new Promise(r=>setTimeout(r,250))');assert.equal(await evaluate('CoinGame.flickUI.getMatch().shot.elapsed'),pausedElapsed);await click('.guide-dialog [data-close]');
+
   await navigate('#home');await navigate('#flick');await checkSizes('Flick resumed');await screenshot('flick');
   await click('[data-flick="rules"]');assert.ok(await evaluate("document.querySelector('dialog').open"));await evaluate("document.querySelector('dialog').close()");
-  await navigate('#save');await checkWidth('Save management');
-  await click('[data-action="saveNow"]');
+  await navigate('#draw');
+  const beforeTokens=await evaluate("CoinGame.load().tokens");
+  await click('[data-action="refill"]');
   const persisted=await evaluate("localStorage.getItem(CoinGame.config.storageKey)");
-  await evaluate(`(()=>{const file=new File([JSON.stringify({...JSON.parse(localStorage.getItem(CoinGame.config.storageKey)),tokens:4321})],'save.json',{type:'application/json'});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector('#save-file');input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-  await evaluate('new Promise(resolve=>setTimeout(resolve,100))');
-  assert.equal(await evaluate("localStorage.getItem(CoinGame.config.storageKey)"),persisted);
-  await click('[data-action="confirmImport"]');
-  assert.equal(await evaluate("CoinGame.load().tokens"),4321);
+  assert.equal(JSON.parse(persisted).tokens,beforeTokens+1000);
+  await navigate('#save');await checkWidth('Legacy route returns home');
+  assert.equal(await evaluate("document.querySelector('#app').className"),'page-home');
+  assert.equal(await evaluate(`!!document.querySelector('[href="#save"],#save-file,[data-action="saveNow"]')`),false);
   await cdp('Page.reload');await new Promise(resolve=>setTimeout(resolve,400));
-  assert.equal(await evaluate("document.querySelector('#balance').textContent"),'4,321');
-  console.log('Save import confirmation and reload persistence passed.');
+  assert.equal(await evaluate("localStorage.getItem(CoinGame.config.storageKey)"),persisted);
+  assert.equal(await evaluate("document.querySelector('#balance').textContent"),(beforeTokens+1000).toLocaleString());
+  assert.equal(await evaluate("!!document.querySelector('.guide-dialog[open]')"),false);
+  console.log('Tutorial first visits, replay, matchup tables, pause, and persisted completion passed.');
+  console.log('Automatic save and reload persistence passed; legacy save controls removed.');
   console.log('Browser checks passed: no page or main-content scroll at 320x568, 360x640, 390x700, 390x844, 430x800, 1024x768; all battle phases; full three-round UI flow; detail panels and system font; retained pages.');
   console.log('Screenshots: '+output);
   await send('Browser.close');socket.close();

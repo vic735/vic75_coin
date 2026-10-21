@@ -22,5 +22,11 @@
     const img=imageFor(sprite(side,element));
     if(img.complete&&img.naturalWidth)ctx.drawImage(img,x-r,y-r,r*2,r*2);
   };
-  G.presentation={icon,seal,coin,paintCoin,loadCoins:()=>Promise.all(['light','dark'].flatMap(face=>[...Object.values(names),'none'].map(element=>{const img=imageFor(face+'-'+element);return img.decode().catch(()=>{});} )))};
+  // Two real faces rotate together; the reverse face stays hidden until halfway.
+  const flipCoin=(el,c,from,to,oldValue=null,newValue=null)=>{
+    if(!el)return;
+    const a=G.face(c,from),b=G.face(c,to),large=el.classList.contains('large');
+    el.outerHTML=`<div class="coin-flip" role="img" aria-label="硬幣翻面中" style="--flip-start:${from==='front'?0:180}deg;--flip-end:${from==='front'?180:360}deg"><div class="coin-flip-rotor">${coin(from==='front'?(oldValue??a.baseDamage):(newValue??b.baseDamage),'front',from==='front'?a.element:b.element,large)}${coin(from==='back'?(oldValue??a.baseDamage):(newValue??b.baseDamage),'back',from==='back'?a.element:b.element,large)}</div></div>`;
+  };
+  G.presentation={icon,seal,coin,flipCoin,paintCoin,loadCoins:()=>Promise.all(['light','dark'].flatMap(face=>[...Object.values(names),'none'].map(element=>{const img=imageFor(face+'-'+element);return img.decode().catch(()=>{});} )))};
 })(CoinGame);

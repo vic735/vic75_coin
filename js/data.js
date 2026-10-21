@@ -39,7 +39,7 @@
   };
   G.load = () => {
     try {const raw=localStorage.getItem(G.config.storageKey);return raw?G.parseSave(raw):G.initialData();}
-    catch {G.storageBlocked=true;G.storageWarning='無法讀取原存檔，已暫用測試資料；為保護原檔，暫停自動寫入。請至存檔管理備份或匯入。';return G.initialData();}
+    catch {G.storageBlocked=true;G.storageWarning='無法讀取原存檔，已暫用測試資料；為保護原檔，暫停自動寫入。';return G.initialData();}
   };
   G.save = (data,replace=false) => {
     if(G.storageBlocked&&!replace)return false;
