@@ -10,7 +10,7 @@
     session=new N.Session(sid,id,raw=>peer.send(raw),update,()=>peer?.close());
   }
   async function perform(fn){if(busy)return;busy=true;error='';render();const epoch=generation;try{await fn();}catch(e){if(epoch===generation){error=e.message;status='failed';peer?.close();}}finally{if(epoch===generation){busy=false;render();}}}
-  const disc=(c,side,large=false)=>{const f=G.face(c,side);return G.presentation.coin(f.baseDamage,side,f.element,large);};
+  const disc=(c,side,large=false,settled=false)=>{const f=G.face(c,side);return G.presentation.coin(settled?f.damage:f.baseDamage,side,f.element,large);};
   function roster(deck){return `<div class="net-roster">${deck.map(c=>`<div><span>${esc(c.name)}</span><div>${disc(c,'front')}${disc(c,'back')}</div><small>鍍膜 +${c.coatings.front.attack} / +${c.coatings.back.attack}</small></div>`).join('')}</div>`;}
   function pairing(){
     if(!role)return `<div class="net-intro"><h2>同一網路，好友對決</h2><p>雙方連上可互通的區域網路，以邀請與回覆配對。三局規則沿用普通模式。</p><button class="primary" data-net="host">建立房間 · 玩家 A</button><button data-net="join">加入房間 · 玩家 B</button><p class="hint">好友休閒模式 · 無帳號、無伺服器<br>部分 Wi-Fi 會阻擋裝置互連。</p><a href="#home">返回主選單</a></div>`;
@@ -38,7 +38,7 @@
       if(!done&&seenToss!==state.attempt){seenToss=state.attempt;animation={kind:'toss',until:Date.now()+850};scheduleAnimation();}
       if(done&&seenResult!==state.attempt){seenResult=state.attempt;if(state.last.playerFlipped||state.last.aiFlipped){animation={kind:'flip',until:Date.now()+620};scheduleAnimation();}}
       const tossing=animation?.kind==='toss'&&Date.now()<animation.until;
-      body+=`<div class="net-duel">${[me,other].map((i,j)=>{const c=fighters[j],f=G.face(c,sides[i]);return `<article data-fighter="${i}"><h3>${j===0?'我方':'對手'} · ${esc(c.name)}</h3><div class="net-disc">${tossing?`<div class="toss-coin" style="--landing-angle:${sides[i]==='front'?1080:1260}deg">${disc(c,'front',true)}${disc(c,'back',true)}</div>`:disc(c,sides[i],true)}</div><small>${tossing?'擲幣中…':(sides[i]==='front'?'正面':'反面')+' · '+f.element}</small><div class="net-power">${tossing?'—':`${f.baseDamage} + ${f.coatingAttack} + ${j===0?p.bonusA:p.bonusB}`}</div><strong>${tossing?'—':j===0?p.a:p.b}</strong></article>`;}).join('')}</div>`;
+      body+=`<div class="net-duel">${[me,other].map((i,j)=>{const c=fighters[j],f=G.face(c,sides[i]);return `<article data-fighter="${i}"><h3>${j===0?'我方':'對手'} · ${esc(c.name)}</h3><div class="net-disc">${tossing?`<div class="toss-coin" style="--landing-angle:${sides[i]==='front'?1080:1260}deg">${disc(c,'front',true)}${disc(c,'back',true)}</div>`:disc(c,sides[i],true,done)}</div><small>${tossing?'擲幣中…':(sides[i]==='front'?'正面':'反面')+' · '+f.element}</small><div class="net-power">${tossing?'—':`${f.baseDamage} + ${f.coatingAttack} + ${j===0?p.bonusA:p.bonusB}`}</div><strong>${tossing?'—':j===0?p.a:p.b}</strong></article>`;}).join('')}</div>`;
       if(phase==='interfere')body+=`<p>${s.stages.interfere.commits[me]?'已鎖定決定，等待對方揭示':'同時秘密決定是否干涉'}</p><div class="net-buttons"><button data-net="flip" ${!state.interference[me]||s.stages.interfere.commits[me]||tossing?'disabled':''}>干涉翻面</button><button class="primary" data-net="keep" ${s.stages.interfere.commits[me]||tossing?'disabled':''}>保持原面</button></div>`;
       else if(done){
         const tied=state.last.tied,won=me===0?state.last.score===1:state.last.score===0;
@@ -54,7 +54,7 @@
     if(!root)return;
     let content=session?.stopped?`<p class="net-error">${esc(error)}</p><p>${session.completed?'本場結果已經雙方驗證。':'本場中斷，不判定勝負。'}收藏與單人進度保留。</p><button class="primary" data-net="reset">重新配對</button><a href="#home">返回主選單</a>`:session?.phase==='lobby'?lobby():session?.state?battle():pairing();
     root.innerHTML=`<section class="net-page"><header><h1>連線對戰</h1><span role="status">${esc(labels[status]||status)}</span></header>${error&&!session?.stopped?`<p class="net-error" role="alert">${esc(error)}</p>`:''}${content}</section>`;
-    if(animation?.kind==='flip'&&session?.state?.last){const r=session.state.last;for(const [i,c,side,flipped] of [[0,r.player,r.playerSide,r.playerFlipped],[1,r.ai,r.aiSide,r.aiFlipped]])if(flipped)G.presentation.flipCoin(root.querySelector(`[data-fighter="${i}"] .net-disc>.coin`),c,G.otherSide(side),side);}
+    if(animation?.kind==='flip'&&session?.state?.last){const r=session.state.last;for(const [i,c,side,flipped] of [[0,r.player,r.playerSide,r.playerFlipped],[1,r.ai,r.aiSide,r.aiFlipped]])if(flipped)G.presentation.flipCoin(root.querySelector(`[data-fighter="${i}"] .net-disc>.coin`),c,G.otherSide(side),side,G.face(c,G.otherSide(side)).baseDamage,G.face(c,side).damage);}
     root.querySelectorAll('[data-net],[data-coin]').forEach(el=>el.onclick=event=>{event.stopPropagation();if(el.disabled)return;act(el);});
   }
   async function act(el){

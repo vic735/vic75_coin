@@ -17,7 +17,7 @@
   };
   G.draw = (data,pool,count,random=Math.random) => {
     if(!['coins','coatings'].includes(pool) || ![1,10].includes(count))throw Error('無效抽卡請求');
-    if(data.tokens<count*G.config.drawCost)throw Error('測試代幣不足，請領取免費補給。');
+    if(data.tokens<count*G.config.drawCost)throw Error('代幣不足，可透過冒險通關取得獎勵。');
     const results=Array.from({length:count},()=>pool==='coins'?G.rollCoin(random):G.rollCoating(random));
     data.tokens-=count*G.config.drawCost; data[pool].push(...results); return results;
   };

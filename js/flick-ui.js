@@ -24,7 +24,7 @@
       if(flipping)return;
       if(el.dataset.opening){opening=opening===el.dataset.opening?null:el.dataset.opening;render();return;}
       switch(el.dataset.flick){
-        case 'start':if(G.progression?.activeRoute?.())throw Error('請先完成目前對戰');m=F.create(data);opening=null;tossUntil=Date.now()+850;break;
+        case 'start':m=F.create(data);opening=null;tossUntil=Date.now()+850;break;
         case 'begin':withFlip(()=>F.begin(m,opening));return;
         case 'flip':withFlip(()=>F.flip(m,selected));selected=null;return;
         case 'restart':m=null;selected=null;break;
@@ -73,7 +73,7 @@
     for(const c of m.coins.filter(c=>c.hp>0&&(!flipping||!flipJobs.some(j=>j.c.id===c.id)))){
       const rim=c.side==='front'?'#ffe3a3':'#e0e6f4';G.presentation.paintCoin(ctx,c.x,c.y,F.radius,c.side,G.face(c.coin,c.side).element);
       if(c.id===selected){ctx.beginPath();ctx.arc(c.x,c.y,F.radius+4,0,Math.PI*2);ctx.lineWidth=2;ctx.strokeStyle='#526f83';ctx.stroke();}
-      ctx.fillStyle=rim;ctx.strokeStyle='#30281f';ctx.lineWidth=2;ctx.font='bold 16px system-ui';ctx.textBaseline='middle';ctx.strokeText(c.hp,c.x,c.y+1);ctx.fillText(c.hp,c.x,c.y+1);ctx.textBaseline='alphabetic';ctx.beginPath();ctx.arc(c.x,c.y+F.radius+5,2,0,Math.PI*2);ctx.fillStyle=c.owner==='player'?'#477eab':'#b34f58';ctx.fill();
+      ctx.fillStyle=rim;ctx.strokeStyle='#30281f';ctx.lineWidth=2;ctx.font='bold 24px system-ui';ctx.textBaseline='middle';ctx.strokeText(c.hp,c.x,c.y+1);ctx.fillText(c.hp,c.x,c.y+1);ctx.textBaseline='alphabetic';ctx.beginPath();ctx.arc(c.x,c.y+F.radius+5,2,0,Math.PI*2);ctx.fillStyle=c.owner==='player'?'#477eab':'#b34f58';ctx.fill();
     }
     if(drag){const a=drag.origin,dx=drag.start.x-drag.end.x,dy=drag.start.y-drag.end.y,len=Math.hypot(dx,dy),k=Math.min(1,140/Math.max(len,1)),x=a.x+dx*k,y=a.y+dy*k,angle=Math.atan2(dy,dx);ctx.strokeStyle='#35596e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(x,y);ctx.lineTo(x-10*Math.cos(angle-.5),y-10*Math.sin(angle-.5));ctx.moveTo(x,y);ctx.lineTo(x-10*Math.cos(angle+.5),y-10*Math.sin(angle+.5));ctx.stroke();}
   }

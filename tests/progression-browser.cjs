@@ -1,6 +1,19 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 module.exports=async({a,wait,click,sizes,delay,root})=>{
  await a.evaluate("CoinGame.tour.stop();CoinGame.help.visit=()=>{};location.hash='#adventure'");
+ if(process.argv.includes('--switching')){
+  const go=async hash=>{await a.evaluate(`location.hash=${JSON.stringify(hash)}`);await delay(100);};
+  const before=await a.evaluate('CoinGame.load()');
+  await go('#battle');await click(a,'[data-action=start]');await wait(a,'!!document.querySelector("[data-action=toss]")','Normal match');
+  await go('#adventure');await click(a,'[data-progress-mode=flick]');await click(a,'[data-action=challenge]');await wait(a,'!!document.querySelector("[data-flick=begin]")','Flick while normal unfinished');
+  assert.equal(await a.evaluate('CoinGame.flickUI.getMatch().phase'),'setup');
+  await go('#adventure');await sizes(a,'Adventure with unfinished flick');await click(a,'[data-progress-mode=standard]');await click(a,'[data-action=challenge]');await wait(a,'!!document.querySelector("[data-action=toss]")','Normal adventure while flick unfinished');
+  await go('#ranked');await click(a,'[data-progress-mode=squad]');await click(a,'[data-action=rankedStart]');await wait(a,'!!document.querySelector("[data-action=squadReveal]")','Ranked squad while other matches unfinished');
+  await go('#death');await click(a,'[data-action=startDeath]');await wait(a,'!!document.querySelector("[data-action=toss]")','Death while normal unfinished');
+  await go('#flick');assert.equal(await a.evaluate('CoinGame.flickUI.getMatch().phase'),'setup');await wait(a,'!!document.querySelector("[data-flick=begin]:not(:disabled)")','Retained flick');
+  const after=await a.evaluate('CoinGame.load()');assert.equal(after.tokens,before.tokens);assert.deepEqual(after.coins,before.coins);assert.deepEqual(after.coatings,before.coatings);assert.deepEqual(after.ranked,before.ranked);assert.equal(after.adventure?.wins||0,0);
+  console.log('PASS: unfinished normal/flick do not block adventure, ranked, squad or death; retained flick resumes; no unearned rewards or rating changes.');return;
+ }
  const modes=['standard','death','squad','flick'];
  for(const kind of ['adventure','ranked'])for(const mode of modes){
   await a.evaluate(`location.hash='#${kind}'`);await wait(a,'!!document.querySelector(".progress-modes")','Mode selector');

@@ -88,6 +88,7 @@ test('reference arena keeps enemy hidden until toss and used coins cannot be pic
   assert.match(app.innerHTML,/data-pick="[^"]+" aria-pressed="true"/);
   click({action:'toss'});assert.equal(tosses,1);assert.doesNotMatch(app.innerHTML,/hidden-fighter/);
   assert.match(app.innerHTML,/基礎傷害/);assert.match(app.innerHTML,/鍍膜攻擊/);assert.match(app.innerHTML,/五行加成/);
+  G.power=()=>({a:8,b:4,bonusA:0,bonusB:0,reasons:[]});
   click({action:'keep'});click({action:'next'});click({pick:d.team[1]});
   assert.doesNotMatch(app.innerHTML,new RegExp('is-chosen[^<]*data-pick="'+d.team[1]+'"'));
   assert.match(app.innerHTML,/hidden-fighter/);assert.equal(tosses,1);
@@ -130,6 +131,14 @@ test('removed save page falls back home and automatic saves survive reload',()=>
   ctx.location.hash='#save';events.hashchange();assert.equal(app.className,'page-home');
   assert.doesNotMatch(app.innerHTML,/save-file|saveNow|confirmImport|exportSave/);
   const reopened=setup(true,saved);assert.equal(JSON.stringify(reopened.G.load()),JSON.stringify(saved));
+});
+test('draw animation saves once before reveal and blocks duplicate draws and pool changes',()=>{
+ const {G,ctx,events,app}=setup(true),callbacks=[];ctx.setTimeout=fn=>{callbacks.push(fn);return callbacks.length;};ctx.location.hash='#draw';events.hashchange();
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+ click({draw:'1'});assert.match(app.innerHTML,/draw-summoning/);assert.equal((app.innerHTML.match(/class="draw-falling-coin"/g)||[]).length,24);assert.doesNotMatch(app.innerHTML,/id="draw-results"/);
+ const stored=JSON.stringify(G.load());assert.equal(G.load().coins.length,4);assert.equal(G.load().tokens,2900);
+ click({draw:'10'});click({pool:'coatings'});assert.equal(JSON.stringify(G.load()),stored);callbacks.shift()();assert.match(app.innerHTML,/id="draw-results"/);
+ click({action:'dismissDraw'});click({pool:'coatings'});click({draw:'10'});assert.equal(G.load().coatings.length,16);assert.equal(G.load().tokens,1900);callbacks.shift()();assert.match(app.innerHTML,/已存入收藏 · 10 件/);
 });
 
 test('100 adventure opponents are stable, legal, and ramp in difficulty',()=>{
@@ -200,6 +209,27 @@ test('death UI waits for confirmation of both coins before resolving; tie-only f
  assert.match(app.innerHTML,/確認結果/);assert.doesNotMatch(app.innerHTML,/MATCH COMPLETE|雙方翻面決勝/);assert.match(app.innerHTML,/duel-fighter ally/);assert.match(app.innerHTML,/duel-fighter enemy/);click({action:'deathConfirm'});assert.match(app.innerHTML,/雙方翻面決勝/);assert.doesNotMatch(app.innerHTML,/data-action="flip"/);
  G.power=()=>({a:7,b:4,bonusA:0,bonusB:0,reasons:[]});click({action:'deathFlip'});assert.doesNotMatch(app.innerHTML,/MATCH COMPLETE/);assert.match(app.innerHTML,/查看結算/);click({action:'deathResult'});assert.match(app.innerHTML,/MATCH COMPLETE/);
  assert.equal(G.load().adventure,undefined);
+});
+test('battle result coins include their face coating, while preparation stays at base damage',()=>{
+ const {G:base}=setup(),saved=base.initialData();saved.coatings.forEach(c=>c.attack=3);
+ for(const mode of ['standard','death']){
+  const {ctx,events,app}=setup(true,saved),click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
+  ctx.location.hash=mode==='death'?'#death':'#battle';events.hashchange();click({action:mode==='death'?'startDeath':'start'});click({action:'toss'});
+  function check(add){for(const part of app.innerHTML.matchAll(/<article class="duel-fighter (?:ally|enemy)">([\s\S]*?)<\/article>/g)){
+   const html=part[1],value=Number(html.match(/<strong>(\d+)<\/strong>/)[1]),damage=Number(html.match(/基礎傷害<\/dt><dd>(\d+)/)[1]),coating=Number(html.match(/鍍膜攻擊[\s\S]*?<dd>\+(\d+)/)[1]);
+   assert.equal(value,damage+(add?coating:0));
+  }}
+  check(false);click({action:mode==='death'?'deathConfirm':'keep'});check(true);
+ }
+});
+test('squad revealed coin numbers include coating attack and preserve pre-boost tie values',()=>{
+ const {G:base}=setup(),saved=base.initialData();saved.coins.forEach(c=>{c.front=3;c.back=3;});saved.coatings.forEach(c=>c.attack=2);
+ const {G,ctx,events,app}=setup(true,saved),create=G.squad.create;
+ G.squad.create=(data)=>{const m=create(data);m.ai.forEach(c=>{c.front=3;c.back=3;c.coatings.front.attack=c.coatings.back.attack=2;});return m;};
+ G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});ctx.location.hash='#squad';events.hashchange();
+ const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});click({action:'squadStart'});click({action:'squadReveal'});
+ const numbers=[...app.innerHTML.matchAll(/class="coin [^"]+"[^>]*><strong>(\d+)<\/strong>/g)].map(m=>Number(m[1]));assert.deepEqual(numbers,[5,5,5,5,5,5]);
+ assert.equal(G.load().coins[0].front,3);
 });
 
 test('squad commits AI flip before player decision and resolves all three elemental pairs once',()=>{

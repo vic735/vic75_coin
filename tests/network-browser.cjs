@@ -44,9 +44,9 @@ async function sizes(b,label){for(const [width,height] of [[320,568],[390,700],[
  let a,b;
  try{
   a=await launch(url);
-  if(process.argv.includes('--progression')){await require('./progression-browser.cjs')({a,wait,click,sizes,delay,root});return;}
+  if(process.argv.includes('--progression')||process.argv.includes('--switching')){await require('./progression-browser.cjs')({a,wait,click,sizes,delay,root});return;}
   b=await launch(url,'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe');
-  for(const browser of [a,b]){await browser.evaluate("CoinGame.tour.stop();localStorage.setItem('coin-duel-help-v2',JSON.stringify({beginner:true}));location.hash='#network'");await wait(browser,'!!document.querySelector("[data-net=host]")','entry');}
+  for(const browser of [a,b]){await browser.evaluate("CoinGame.tour.stop();const fixture=CoinGame.load();fixture.coatings.forEach(c=>c.attack=2);CoinGame.save(fixture);localStorage.setItem('coin-duel-help-v2',JSON.stringify({beginner:true}));location.hash='#network'");await wait(browser,'!!document.querySelector("[data-net=host]")','entry');}
   const original=await a.evaluate('localStorage.getItem(CoinGame.config.storageKey)');await sizes(a,'Entry');
   await click(b,'[data-net=join]');await b.evaluate("document.querySelector('#net-input').value='{}'");await click(b,'[data-net=answer]');await wait(b,'!!document.querySelector(".net-error")','Invalid invitation');await click(b,'[data-net=reset]');
   await click(a,'[data-net=host]');await wait(a,'!!document.querySelector("#net-output")','Offer');await sizes(a,'Offer');
@@ -69,6 +69,7 @@ async function sizes(b,label){for(const [width,height] of [[320,568],[390,700],[
    for(const browser of [a,b])await click(browser,await browser.evaluate('!!document.querySelector("[data-net=flip]:not(:disabled)")')?'[data-net=flip]':'[data-net=keep]');
    for(const browser of [a,b])await wait(browser,'["roundEnd","finished"].includes(CoinGame.connectionUI.getSession().phase)','Result');
    assert.equal(await a.evaluate('CoinGame.network.canonical(CoinGame.connectionUI.getSession().state)'),await b.evaluate('CoinGame.network.canonical(CoinGame.connectionUI.getSession().state)'));
+   for(const browser of [a,b]){await wait(browser,'!document.querySelector(".coin-flip")','Flip animation complete');assert.ok(await browser.evaluate(`(()=>{const G=CoinGame,r=G.connectionUI.getSession().state.last;return [[0,r.player,r.playerSide],[1,r.ai,r.aiSide]].every(([i,c,side])=>Number(document.querySelector('[data-fighter="'+i+'"] .net-disc .coin strong').textContent)===G.face(c,side).damage);})()`));}
    if(checks===1)await sizes(a,'Round result');
    if(await a.evaluate('CoinGame.connectionUI.getSession().phase==="finished"'))break;
    for(const browser of [a,b]){await wait(browser,'!!document.querySelector("[data-net=next]:not(:disabled)")','Confirm result');await click(browser,'[data-net=next]');}

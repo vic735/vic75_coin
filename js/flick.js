@@ -1,5 +1,5 @@
 (function(G){
-  const F=G.flick={width:360,height:520,radius:20,maxSpeed:850,stepSeconds:1/120};
+  const F=G.flick={width:360,height:520,radius:30,maxSpeed:850,stepSeconds:1/120};
   F.damage=(a,b)=>G.config.counters[a]===b?3:G.config.generates[b]===a?2:1;
   F.alive=(m,owner)=>m.coins.filter(c=>c.owner===owner&&c.hp>0);
   F.stats=(m,owner)=>{const c=F.alive(m,owner),values=c.map(c=>c.hp);return {sum:values.reduce((a,b)=>a+b,0),count:c.length,spread:c.length?Math.max(...values)-Math.min(...values):0};};

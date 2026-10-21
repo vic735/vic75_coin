@@ -1,5 +1,6 @@
 if(process.argv.includes('--network')){require('./network-browser.cjs');return;}
 if(process.argv.includes('--progression')){require('./network-browser.cjs');return;}
+if(process.argv.includes('--switching')){require('./network-browser.cjs');return;}
 if(process.argv.includes('--pwa')){require('./pwa-check.cjs');return;}
 // Optional local Chrome verification, using Node's built-in WebSocket/CDP support.
 const {spawn}=require('node:child_process');
@@ -38,7 +39,11 @@ async function main(){
   const screenshot=async name=>{const r=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(r.data,'base64'));};
   const checkWidth=async label=>assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),label+' has horizontal overflow');
   const navigate=async hash=>{await evaluate(`location.hash=${JSON.stringify(hash)};new Promise(resolve=>setTimeout(resolve,80))`);};
-  const click=async selector=>{const clicked=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)return false;e.click();return true;})()`);assert.ok(clicked,'Cannot click '+selector);if(await evaluate("!!document.querySelector('.coin-flip')")){assert.ok(await evaluate("[...document.querySelectorAll('.coin-flip')].every(el=>el.querySelector('.coin.front')&&el.querySelector('.coin.back')&&getComputedStyle(el.querySelector('.coin-flip-rotor')).animationName==='coin-turn-over')"),'Flip must rotate two distinct faces');await evaluate('new Promise(resolve=>setTimeout(resolve,680))');}};
+  const click=async selector=>{const clicked=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)return false;e.click();return true;})()`);assert.ok(clicked,'Cannot click '+selector);if(await evaluate("!!document.querySelector('.draw-summoning')")){assert.equal(await evaluate("document.querySelectorAll('.draw-falling-coin').length"),24);assert.equal(await evaluate("!!document.querySelector('#draw-results,[data-draw]')"),false);await evaluate('new Promise(r=>setTimeout(r,1600))');}if(await evaluate("!!document.querySelector('.coin-flip')")){assert.ok(await evaluate("[...document.querySelectorAll('.coin-flip')].every(el=>el.querySelector('.coin.front')&&el.querySelector('.coin.back')&&getComputedStyle(el.querySelector('.coin-flip-rotor')).animationName==='coin-turn-over')"),'Flip must rotate two distinct faces');await evaluate('new Promise(resolve=>setTimeout(resolve,680))');}};
+  const squadLanding=async()=>{
+    assert.ok(await evaluate(`(()=>{const coins=[...document.querySelectorAll('.squad-toss')];return coins.length===3&&coins.every(c=>c.querySelector('.coin.front')&&c.querySelector('.coin.back')&&getComputedStyle(c).animationName==='squad-toss'&&getComputedStyle(c.querySelector('.coin.back')).backfaceVisibility==='hidden')&&document.querySelector('[data-action=squadReveal]').disabled&&[...document.querySelectorAll('[data-squad-pick]')].every(b=>b.disabled)&&document.querySelectorAll('.squad-hidden').length===3;})()`),'Squad toss must rotate both faces and lock decisions while concealing enemy');
+    await evaluate('new Promise(r=>setTimeout(r,950))');assert.equal(await evaluate("document.querySelector('[data-action=squadReveal]').disabled"),false);
+  };
   const sizes=[[320,568],[360,640],[390,700],[390,844],[430,800],[1024,768]];
   const checkScreen=async label=>{
     const size=await evaluate("(()=>{const a=document.querySelector('#app');return {pageHeight:document.documentElement.scrollHeight,viewHeight:innerHeight,appHeight:a.clientHeight,contentHeight:a.scrollHeight};})()");
@@ -146,14 +151,14 @@ async function main(){
   await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
   await checkSizes('Death revealed results');assert.equal(await evaluate("!!document.querySelector('.royal-result')"),false);await click('[data-action="deathConfirm"]');await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
   await evaluate('CoinGame.power=window.deathOriginalPower');
-  await navigate('#squad');await checkSizes('Squad ready');await click('[data-action="squadStart"]');await checkSizes('Squad hidden');
+  await navigate('#squad');await checkSizes('Squad ready');await click('[data-action="squadStart"]');await squadLanding();await checkSizes('Squad hidden');
   assert.equal(await evaluate("document.querySelectorAll('.squad-hidden').length"),3);
   assert.ok(await evaluate("document.querySelector('.squad-side h2 strong').textContent==='—' && document.querySelectorAll('[data-squad-pick] .coin').length===3"));
   await click('[data-squad-pick="0"]');await click('[data-squad-pick="2"]');assert.equal(await evaluate("document.querySelectorAll('.squad-card.chosen').length"),1);await checkSizes('Squad flip selection');
   await evaluate("window.squadPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
   await click('[data-action="squadReveal"]');await checkSizes('Squad tie');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+1')"));
-  await click('[data-action="squadToss"]');await click('[data-action="squadReveal"]');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+2')"));
-  await click('[data-action="squadToss"]');await evaluate("CoinGame.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]})");await click('[data-action="squadReveal"]');await checkSizes('Squad revealed results');assert.equal(await evaluate("document.querySelectorAll('.squad-card .coin').length"),6);await click('[data-action="squadResult"]');await checkSizes('Squad result');await screenshot('squad');
+  await click('[data-action="squadToss"]');await squadLanding();await click('[data-action="squadReveal"]');assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('+2')"));
+  await click('[data-action="squadToss"]');await squadLanding();await evaluate("CoinGame.power=()=>({a:6,b:3,bonusA:0,bonusB:0,reasons:[]})");await click('[data-action="squadReveal"]');await checkSizes('Squad revealed results');assert.equal(await evaluate("document.querySelectorAll('.squad-card .coin').length"),6);await click('[data-action="squadResult"]');await checkSizes('Squad result');await screenshot('squad');
   assert.ok(await evaluate("document.querySelector('.squad-status').textContent.includes('勝利')"));await evaluate('CoinGame.power=window.squadPower');
   await navigate('#flick');await checkSizes('Flick ready');
   await click('[data-flick="start"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');await checkSizes('Flick opening');

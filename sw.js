@@ -1,6 +1,6 @@
 // Bump the version whenever the app assets change. New versions activate after
 // existing game windows close, so a running match keeps a consistent build.
-const CACHE = 'coin-duel-shell-v39';
+const CACHE = 'coin-duel-shell-v44';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './js/vendor/qrcode.js', './js/vendor/jsQR.js', './js/vendor/qrcode-LICENSE.txt', './js/vendor/jsQR-LICENSE.txt', './js/network/qr.js', './network.css', './home.css', './js/network/protocol.js', './js/network/signaling.js', './js/network/commitReveal.js', './js/network/multiplayer.js', './js/network/webrtc.js', './js/network/session.js', './js/network/connectionUI.js',
