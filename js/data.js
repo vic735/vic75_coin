@@ -15,6 +15,17 @@
       const a=d.adventure;
       if(!a||!Array.isArray(a.cleared)||new Set(a.cleared).size!==a.cleared.length||!a.cleared.every(n=>Number.isInteger(n)&&n>=1&&n<=100&&(n===1||a.cleared.includes(n-1)))||!['wins','losses','draws'].every(k=>Number.isSafeInteger(a[k])&&a[k]>=0)||a.wins<a.cleared.length)return false;
     }
+    const modes=['standard','death','squad','flick'];
+    if(d.adventures!==undefined){
+      if(!d.adventures||typeof d.adventures!=='object'||Array.isArray(d.adventures))return false;
+      for(const [mode,a] of Object.entries(d.adventures)){
+        if(!modes.slice(1).includes(mode)||!a||!Array.isArray(a.cleared)||new Set(a.cleared).size!==a.cleared.length||!a.cleared.every(n=>Number.isInteger(n)&&n>=1&&n<=100&&(n===1||a.cleared.includes(n-1)))||!['wins','losses','draws'].every(k=>Number.isSafeInteger(a[k])&&a[k]>=0)||a.wins<a.cleared.length)return false;
+      }
+    }
+    if(d.ranked!==undefined){
+      if(!d.ranked||typeof d.ranked!=='object'||Array.isArray(d.ranked)||Object.keys(d.ranked).length!==4)return false;
+      if(!modes.every(mode=>{const r=d.ranked[mode];return r&&['points','wins','losses','draws'].every(k=>Number.isSafeInteger(r[k])&&r[k]>=0);}))return false;
+    }
     const ids = [...d.coins,...d.coatings].map(x=>x.id);
     if (ids.some(id=>typeof id !== 'string') || new Set(ids).size !== ids.length) return false;
     const elements = Object.keys(G.config.elementWeights);

@@ -1,11 +1,11 @@
 (function(G){
-  const F=G.flick={width:360,height:520,radius:16,maxSpeed:850,stepSeconds:1/120};
+  const F=G.flick={width:360,height:520,radius:20,maxSpeed:850,stepSeconds:1/120};
   F.damage=(a,b)=>G.config.counters[a]===b?3:G.config.generates[b]===a?2:1;
   F.alive=(m,owner)=>m.coins.filter(c=>c.owner===owner&&c.hp>0);
   F.stats=(m,owner)=>{const c=F.alive(m,owner),values=c.map(c=>c.hp);return {sum:values.reduce((a,b)=>a+b,0),count:c.length,spread:c.length?Math.max(...values)-Math.min(...values):0};};
   F.first=(m,random=Math.random)=>{const a=F.stats(m,'player'),b=F.stats(m,'ai');for(const key of ['sum','count','spread'])if(a[key]!==b[key])return a[key]<b[key]?'player':'ai';return random()<.5?'player':'ai';};
-  F.create=(data,random=Math.random)=>{
-    const base=G.newMatch(data,random);
+  F.create=(data,random=Math.random,opponent=null)=>{
+    const base=G.newMatch(data,random,opponent);
     const coins=['player','ai'].flatMap(owner=>base[owner].map((coin,i)=>{
       const side=random()<.5?'front':'back';return {id:owner+'-'+i,owner,coin,side,hp:G.face(coin,side).damage,x:80+i*100,y:owner==='player'?420:100,vx:0,vy:0};
     }));

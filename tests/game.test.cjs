@@ -9,7 +9,7 @@ function setup(ui=false,savedData=null){
   const elements={'#app':app,'#balance':{},'#toast':{classList:{add(){},remove(){}}}};
   const ctx=vm.createContext({console,Math,Date,location:{hash:'#home'},localStorage:{getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,v)},document:{querySelector:s=>elements[s],querySelectorAll:()=>[]},setTimeout:fn=>{fn();return 1;},clearTimeout(){}});
   ctx.window=ctx;ctx.addEventListener=(name,fn)=>events[name]=fn;ctx.scrollTo=()=>{};
-  for(const name of ['config','data','gacha','battle','squad','adventure',...(ui?['presentation','app']:[])])vm.runInContext(fs.readFileSync(path.join(__dirname,'../js',name+'.js'),'utf8'),ctx);
+  for(const name of ['config','data','gacha','battle','squad','flick','adventure','progression',...(ui?['presentation','app']:[])])vm.runInContext(fs.readFileSync(path.join(__dirname,'../js',name+'.js'),'utf8'),ctx);
   return {G:ctx.CoinGame,ctx,memory,app,events,elements};
 }
 test('starter coins, coatings, team and save round trip',()=>{const {G}=setup(),d=G.initialData();assert.deepEqual(Array.from(d.coins,c=>[c.front,c.back]),[[3,3],[1,10],[5,7]]);assert.equal(G.validData(d),true);G.save(d);assert.equal(JSON.stringify(G.load()),JSON.stringify(d));});
@@ -141,20 +141,20 @@ test('100 adventure opponents are stable, legal, and ramp in difficulty',()=>{
 });
 test('adventure unlocks, first-clear ranking and rewards persist without duplicate payout',()=>{
  const {G}=setup(),d=G.initialData(),A=G.adventure;
- assert.throws(()=>A.start(d,2));assert.equal(A.rank(d).name,'青銅');
+ assert.throws(()=>A.start(d,2));assert.equal(G.progression.rank(d).name,'青銅');
  const finish=(stage,winner)=>{const m=A.start(d,stage,()=>0);m.phase='finished';m.history=Array.from({length:3},()=>({score:winner==='player'?1:winner==='ai'?0:.5,result:{a:5,b:5}}));return m;};
  let m=finish(1,'ai'),before=d.tokens;A.settle(d,m);assert.equal(d.tokens,before);assert.equal(A.unlocked(d,2),false);
- m=finish(1,'tie');A.settle(d,m);assert.equal(A.rank(d).points,0);assert.equal(A.unlocked(d,2),false);
+ m=finish(1,'tie');A.settle(d,m);assert.equal(G.progression.rank(d).points,0);assert.equal(A.unlocked(d,2),false);
  for(let stage=1;stage<=100;stage++){
-  m=finish(stage,'player');const reward=A.settle(d,m);assert.equal(reward.points,30);const saved=d.tokens;assert.equal(A.settle(d,m),null);assert.equal(d.tokens,saved);
+  m=finish(stage,'player');const reward=A.settle(d,m);assert.equal(reward.points,0);const saved=d.tokens;assert.equal(A.settle(d,m),null);assert.equal(d.tokens,saved);
  }
- assert.equal(A.rank(d).name,'傳說');assert.equal(A.rank(d).points,3000);assert.equal(A.unlocked(d,101),false);
+ assert.equal(G.progression.rank(d).name,'青銅');assert.equal(G.progression.rank(d).points,0);assert.equal(A.unlocked(d,101),false);
  m=finish(1,'player');assert.equal(A.settle(d,m).points,0);assert.equal(m.adventureReward.tokens,20);
  assert.equal(G.validData(d),true);G.save(d);assert.equal(JSON.stringify(G.load().adventure),JSON.stringify(d.adventure));
  d.adventure.cleared=[2];assert.equal(G.validData(d),false);
 });
 test('adventure UI plays three rounds, settles once and returns to campaign',()=>{
- const {G,ctx,events,app}=setup(true);ctx.location.hash='#adventure';events.hashchange();assert.match(app.innerHTML,/青銅/);
+ const {G,ctx,events,app}=setup(true);ctx.location.hash='#adventure';events.hashchange();assert.match(app.innerHTML,/冒險破關/);
  const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
  click({action:'challenge'});assert.equal(ctx.location.hash,'#battle');
  for(let i=0;i<100&&!app.innerHTML.includes('MATCH COMPLETE');i++){click({action:'toss'});click({action:'keep'});if(!app.innerHTML.includes('MATCH COMPLETE'))click({action:'next'});}
@@ -193,11 +193,11 @@ test('death match uses one coin and only allows a simultaneous flip after a tie'
  G.prepareRound(m);G.selectCoin(m,m.player[0].id);G.power=()=>({a:9,b:1,bonusA:0,bonusB:0,reasons:[]});G.resolveRound(m,false);
  assert.equal(m.phase,'finished');assert.equal(m.history.length,1);assert.equal(G.summary(m).winner,'player');
 });
-test('death UI auto resolves toss and presents a tie-only flip button',()=>{
+test('death UI waits for confirmation of both coins before resolving; tie-only flip',()=>{
  const {G,ctx,events,app}=setup(true);ctx.location.hash='#death';events.hashchange();
  const click=dataset=>events.click({target:{closest:()=>({dataset,disabled:false})}});
  click({action:'startDeath'});G.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]});click({action:'toss'});
- assert.match(app.innerHTML,/雙方翻面決勝/);assert.doesNotMatch(app.innerHTML,/data-action="flip"/);
+ assert.match(app.innerHTML,/確認結果/);assert.doesNotMatch(app.innerHTML,/MATCH COMPLETE|雙方翻面決勝/);assert.match(app.innerHTML,/duel-fighter ally/);assert.match(app.innerHTML,/duel-fighter enemy/);click({action:'deathConfirm'});assert.match(app.innerHTML,/雙方翻面決勝/);assert.doesNotMatch(app.innerHTML,/data-action="flip"/);
  G.power=()=>({a:7,b:4,bonusA:0,bonusB:0,reasons:[]});click({action:'deathFlip'});assert.doesNotMatch(app.innerHTML,/MATCH COMPLETE/);assert.match(app.innerHTML,/查看結算/);click({action:'deathResult'});assert.match(app.innerHTML,/MATCH COMPLETE/);
  assert.equal(G.load().adventure,undefined);
 });

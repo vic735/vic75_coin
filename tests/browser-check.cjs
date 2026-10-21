@@ -1,3 +1,6 @@
+if(process.argv.includes('--network')){require('./network-browser.cjs');return;}
+if(process.argv.includes('--progression')){require('./network-browser.cjs');return;}
+if(process.argv.includes('--pwa')){require('./pwa-check.cjs');return;}
 // Optional local Chrome verification, using Node's built-in WebSocket/CDP support.
 const {spawn}=require('node:child_process');
 const fs=require('node:fs');
@@ -130,18 +133,18 @@ async function main(){
     await click('[data-action="keep"]');if(await evaluate("!!document.querySelector('.royal-result')"))break;await click('[data-action="next"]');
   }
   await checkSizes('Adventure settlement');
-  assert.ok(await evaluate("document.querySelector('.adventure-reward').textContent.includes('積分')"));
+  assert.ok(await evaluate("document.querySelector('.adventure-reward').textContent.includes('代幣')"));
   assert.equal(await evaluate('(()=>{const p=CoinGame.load().adventure;return p.wins+p.losses+p.draws;})()'),1);
   await navigate('#death');await checkSizes('Death preparation');
   await click('[data-action="startDeath"]');await checkSizes('Death select');
   await evaluate("window.deathOriginalPower=CoinGame.power;CoinGame.power=()=>({a:5,b:5,bonusA:0,bonusB:0,reasons:[]})");
   await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
-  await checkSizes('Death tie');assert.equal(await evaluate("document.querySelectorAll('[data-action=flip]').length"),0);
+  await checkSizes('Death toss awaiting confirmation');assert.equal(await evaluate("!!document.querySelector('[data-action=deathFlip],.royal-result')"),false);assert.equal(await evaluate("document.querySelectorAll('.duel-fighter .battle-coin-holder>.coin').length"),2);await click('[data-action="deathConfirm"]');await checkSizes('Death tie');assert.equal(await evaluate("document.querySelectorAll('[data-action=flip]').length"),0);
   await click('[data-action="deathFlip"]');await checkSizes('Death tie replay');
   await click('[data-action="next"]');
   await evaluate("CoinGame.power=()=>({a:8,b:4,bonusA:0,bonusB:0,reasons:[]})");
   await click('[data-action="toss"]');await evaluate('new Promise(resolve=>setTimeout(resolve,950))');
-  await checkSizes('Death revealed results');assert.equal(await evaluate("!!document.querySelector('.royal-result')"),false);await click('[data-action="deathResult"]');await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
+  await checkSizes('Death revealed results');assert.equal(await evaluate("!!document.querySelector('.royal-result')"),false);await click('[data-action="deathConfirm"]');await checkSizes('Death settlement');assert.equal(await evaluate("document.querySelectorAll('.result-rounds>div').length"),1);
   await evaluate('CoinGame.power=window.deathOriginalPower');
   await navigate('#squad');await checkSizes('Squad ready');await click('[data-action="squadStart"]');await checkSizes('Squad hidden');
   assert.equal(await evaluate("document.querySelectorAll('.squad-hidden').length"),3);
@@ -162,6 +165,11 @@ async function main(){
 
   await evaluate("new Promise(resolve=>{const poll=()=>{const m=CoinGame.flickUI.getMatch();if(m.phase==='turn'&&m.actor==='player')resolve();else setTimeout(poll,100)};poll()})");
   const shot=await evaluate("(()=>{const c=CoinGame.flick.alive(CoinGame.flickUI.getMatch(),'player')[0],r=document.querySelector('canvas').getBoundingClientRect();return {x:r.left+c.x*r.width/360,y:r.top+c.y*r.height/(CoinGame.flickUI.getMatch().height||520),dy:30*r.height/(CoinGame.flickUI.getMatch().height||520)}})()");
+  await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:shot.x,y:shot.y,button:'left',clickCount:1});
+  await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:shot.x,y:shot.y,button:'left',clickCount:1});
+  assert.equal(await evaluate("CoinGame.flickUI.getMatch().phase"),'turn');
+  const remote=await evaluate("(()=>{const m=CoinGame.flickUI.getMatch(),r=document.querySelector('canvas').getBoundingClientRect();for(let y=60;y<m.height-60;y+=40)for(let x=60;x<300;x+=40)if(m.coins.every(c=>Math.hypot(c.x-x,c.y-y)>50))return {x:r.left+x*r.width/360,y:r.top+y*r.height/m.height};})()");
+  shot.x=remote.x;shot.y=remote.y;
   await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:shot.x,y:shot.y,button:'left',clickCount:1});
   await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:shot.x,y:shot.y+shot.dy,button:'left',buttons:1});
   await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:shot.x,y:shot.y+shot.dy,button:'left',clickCount:1});

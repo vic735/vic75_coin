@@ -1,7 +1,7 @@
 (function(G){
   const S=G.squad={};
-  S.create=(data,random=Math.random)=>{
-    const base=G.newMatch(data,random);
+  S.create=(data,random=Math.random,opponent=null)=>{
+    const base=G.newMatch(data,random,opponent);
     return {player:base.player,ai:base.ai,phase:'ready',ties:0,history:[],boost:null};
   };
   S.toss=(m,random=Math.random)=>{
